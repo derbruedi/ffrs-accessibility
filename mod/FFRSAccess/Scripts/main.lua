@@ -2453,7 +2453,7 @@ scanTargets = function(categoryName, origin)
                 end
                 local emptyChest = matches and isEmptyChest(actor, path)
                 if matches and (emptyChest or not isOpenedItem(actor, interactType)) then
-                    local location = actor:K2_GetActorLocation()
+                    local location = menuInfo.interactPoint(actor)
                     local label = exitLabel(targetLabel(actor, source, info, path), exits[path], actor, categoryName)
                     if emptyChest then
                         label = label .. ", leer"
@@ -2618,7 +2618,7 @@ function menuInfo.requestTargets(origin)
             known.questIds[destination.questId] = true
             return
         end
-        local location = actor:K2_GetActorLocation()
+        local location = menuInfo.interactPoint(actor)
         byPath[path] = {
             actor = actor,
             path = path,
@@ -4096,6 +4096,39 @@ function navRoute.describe(route)
     return string.format(route.partial and "Weg nur teilweise bekannt, %d Meter" or "Weg %d Meter", meters)
 end
 
+-- Aufzuege mit Schalter: Bedient wird der Schalter neben der Plattform (m_pActiveBoxComponent), nicht die Mitte.
+function menuInfo.interactPoint(actor)
+    local ok, at = pcall(function()
+        local box = actor.m_pActiveBoxComponent
+        return box and box:IsValid() and box:K2_GetComponentLocation()
+    end)
+    return ok and at or actor:K2_GetActorLocation()
+end
+
+-- Liegt ein Ziel auf anderer Hoehe ohne bekannten Weg, fuehrt meist ein Aufzug hin: den naechsten erreichbaren nennen.
+function menuInfo.liftHint(pawn, origin, target)
+    if math.abs(target.location.Z - origin.Z) < navRoute.FLOOR_HEIGHT then
+        return ""
+    end
+    local best, bestRoute = nil, nil
+    for _, lift in ipairs(navRoute.targetsFor("Objekte", origin)) do
+        local ok, box = pcall(function()
+            return lift.actor.m_pActiveBoxComponent
+        end)
+        if ok and box and box:IsValid() and lift.path ~= target.path then
+            local route = navRoute.find(pawn, origin, lift.location, false, lift.actor)
+            if route and not route.partial and (not bestRoute or route.length < bestRoute.length) then
+                best, bestRoute = lift, route
+            end
+        end
+    end
+    if not best then
+        return ""
+    end
+    log("Aufzug als Weg: " .. best.path)
+    return ", weiter über " .. best.label .. ", " .. navRoute.describe(bestRoute)
+end
+
 function navRoute.reached(location, point)
     return distance2D(location, point) < WALK_POINT_REACHED_DISTANCE
         and math.abs(location.Z - point.Z) < navRoute.FLOOR_HEIGHT
@@ -4104,7 +4137,7 @@ end
 -- Noch zu laufende Strecke entlang des Wegs; die Luftlinie kann auf einem Umweg sogar wachsen.
 function navRoute.remaining(walk, location)
     if not walk.routed then
-        return distance2D(location, walk.actor:K2_GetActorLocation())
+        return distance2D(location, menuInfo.interactPoint(walk.actor))
     end
     local total = distance2D(location, walk.points[walk.pointIndex])
     for index = walk.pointIndex, #walk.points - 1 do
@@ -4214,7 +4247,7 @@ end
 -- Die Luftlinie allein genuegt nicht: Das Ziel kann direkt ueber oder unter der Figur liegen.
 -- Bis zum Wegende laufen, sonst bleibt die Figur vor Truhen ausserhalb der Reichweite stehen.
 function navRoute.finished(walk, location)
-    local straight = distance2D(location, walk.actor:K2_GetActorLocation())
+    local straight = distance2D(location, menuInfo.interactPoint(walk.actor))
     if navRoute.inInteractRange(walk.pawn, walk.actor) then
         return "arrived"
     end
@@ -4236,7 +4269,7 @@ end
 
 function navRoute.replan(walk, location)
     -- Das Navmesh kennt das Hindernis nicht und plant wieder hindurch (14041 21426, Log 06:57): gleich die Wegekarte nehmen.
-    local route = navRoute.find(walk.pawn, location, walk.actor:K2_GetActorLocation(), walk.stuckCount >= 1, walk.actor)
+    local route = navRoute.find(walk.pawn, location, menuInfo.interactPoint(walk.actor), walk.stuckCount >= 1, walk.actor)
     if route then
         walk.points, walk.pointIndex, walk.partial, walk.source = route.points, 1, route.partial, route.source
         walk.bestRemaining = navRoute.remaining(walk, location)
@@ -4301,8 +4334,12 @@ end
 
 local function describeTarget(target, index, count, origin, pawn, controller)
     local meters = math.floor(target.distance / 100 + 0.5)
-    local way = target.doorHops and navRoute.hopsText(target.doorHops)
-        or navRoute.describe(navRoute.find(pawn, origin, target.location, false, target.actor))
+    local route = not target.doorHops and navRoute.find(pawn, origin, target.location, false, target.actor)
+    local way = target.doorHops and navRoute.hopsText(target.doorHops) or navRoute.describe(route)
+    if not target.doorHops and (not route or route.partial) then
+        local hintOk, hint = pcall(menuInfo.liftHint, pawn, origin, target)
+        way = way .. (hintOk and hint or "")
+    end
     return string.format("%s, %s, Luftlinie %d Meter %s, %d von %d", target.label, way, meters,
         directionName(origin, target.location, controller), index, count)
 end
@@ -4719,9 +4756,13 @@ local function tickWalk()
         end
         return
     elseif finished == "deadEnd" then
-        local straight = distance2D(location, activeWalk.actor:K2_GetActorLocation())
-        navGrid.logBlocker(location, activeWalk.actor:K2_GetActorLocation())
-        endWalk(string.format("Weiter ist kein Weg bekannt, noch %d Meter.", math.floor(straight / 100 + 0.5)))
+        local goal = menuInfo.interactPoint(activeWalk.actor)
+        local straight = distance2D(location, goal)
+        navGrid.logBlocker(location, goal)
+        local hintOk, hint = pcall(menuInfo.liftHint, activeWalk.pawn, location,
+            { path = objectPath(activeWalk.actor), location = goal })
+        endWalk(string.format("Weiter ist kein Weg bekannt, noch %d Meter", math.floor(straight / 100 + 0.5))
+            .. (hintOk and hint or "") .. ".")
         return
     end
     -- Zwischensequenzen und Menues sperren die Eingabe, dann soll nichts mehr weiterlaufen.
@@ -4737,7 +4778,7 @@ local function tickWalk()
             activeWalk.detourIndex, activeWalk.detourSeconds = 0, WALK_DETOUR_SECONDS
         end
     elseif activeWalk.blocked or now - activeWalk.bestAt > WALK_GIVE_UP_SECONDS then
-        navGrid.logBlocker(location, activeWalk.actor:K2_GetActorLocation())
+        navGrid.logBlocker(location, menuInfo.interactPoint(activeWalk.actor))
         endWalk(string.format("Weg blockiert, noch %d Meter.", math.floor(remaining / 100 + 0.5)))
     end
 end
