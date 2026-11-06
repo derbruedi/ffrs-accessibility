@@ -1,4 +1,6 @@
-# Baut die Namensliste der Figuren aus den Spieldaten: Figur -> Gespraech -> Sprecher -> deutscher Name.
+# Baut die Namensliste der Figuren aus den Spieldaten: Figur -> Gespraech -> Sprecher -> Schluessel der
+# Namenstabelle (ST_CharaName:CharaName0049). Die Mod liest den Text dazu in der eingestellten Spielsprache;
+# der deutsche Auszug dient nur der Pruefung, dass es den Namen wirklich gibt.
 # Vorher: ffrs_extract locres de game_de.tsv; dumpall talk <FreeTalk und EV>; dump ST_CharaName, ST_UnitName, DT_MapUnitAsset.
 import collections
 import glob
@@ -11,6 +13,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 OUT = r"H:\ff\research\extract\out_full"  # Vollversion; die Demo-Auszuege liegen in out
 TARGET = r"H:\ff\mod\FFRSAccess\Scripts\namen_spiel.txt"
+LEARNED = r"H:\ff\mod\FFRSAccess\Scripts\namen_gelernt.txt"
 PARTY = {"レイン", "ラスウェル", "フィーナ"}
 # m_PointName gibt es nur japanisch, die Sprachdatei kennt die Schluessel nicht. Genannt wird nur, was als Wort
 # im Spiel vorkommt ("Begib dich zum Thronsaal", ST_MainProgress); eigene Uebersetzungen gibt es nicht.
@@ -29,14 +32,16 @@ for line in open(OUT + r"\game_de.tsv", encoding="utf-8"):
     if len(parts) == 3:
         german[parts[0]][parts[1]] = parts[2]
 
-source_to_german = {}
+source_to_ref = {}
+german_to_ref = {}
 for table in ("ST_CharaName", "ST_UnitName"):
     entries = load(os.path.join(OUT, table + ".json"))[0]["StringTable"]["KeysToEntries"]
     for key, source in entries.items():
         text = german[table].get(key)
         if source and text:
-            source_to_german.setdefault(source, text)
-print("Namen mit Uebersetzung:", len(source_to_german))
+            source_to_ref.setdefault(source, f"{table}:{key}")
+            german_to_ref.setdefault(text, f"{table}:{key}")
+print("Namen mit Uebersetzung:", len(source_to_ref))
 
 # Figur-IDs taugen nicht als Name: Sie bezeichnen das Aussehen (Soldat als "Charlotte"), nur der Sprecher zaehlt.
 talk_events = {}
@@ -121,7 +126,7 @@ for level in glob.glob(os.path.join(OUT, "talk", "*_EV.json")):
         # Die Spielfiguren antworten in fremden Gespraechen; sie zaehlen nur, wenn sonst niemand spricht.
         others = collections.Counter({who: n for who, n in found.items() if who not in PARTY}) or found
         source = others.most_common(1)[0][0] if others else None
-        text = source_to_german.get(source)
+        text = source_to_ref.get(source)
         if text:
             names[path] = text
             counts["Name"] += 1
@@ -143,4 +148,14 @@ if "--write" in sys.argv:
             file.write(f"{path}\t{text}\n")
         for source, text in POINTS.items():
             file.write(f"Punkt {source}\t{text}\n")
+        # Alle Schluessel: Daraus baut die Mod die Rueckrichtung Sprechername -> Schluessel zum Lernen.
+        for ref in sorted(set(source_to_ref.values())):
+            file.write(f"Name:{ref}\t{ref}\n")
     print("Geschrieben:", TARGET, len(names))
+    # Gelernte Namen aus aelteren Mod-Staenden (deutscher Text) auf Schluessel umstellen.
+    if os.path.exists(LEARNED):
+        lines = [line.rstrip("\n").split("\t", 1) for line in open(LEARNED, encoding="utf-8") if "\t" in line]
+        with open(LEARNED, "w", encoding="utf-8", newline="\n") as file:
+            for path, text in lines:
+                file.write(f"{path}\t{german_to_ref.get(text, text)}\n")
+        print("Gelernte umgestellt:", LEARNED, len(lines))

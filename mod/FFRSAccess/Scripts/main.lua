@@ -1651,7 +1651,78 @@ local moveInputAction = nil
 local conditionFunctions = nil
 local mapFunctions = nil
 local mapNames = {}
-local npcNames = {}
+-- Namen stehen als Schluessel der Namenstabellen des Spiels (ST_CharaName:CharaName0049) und werden in der
+-- eingestellten Spielsprache gelesen. Eintraege mit fertigem Text (aeltere Staende) gelten unveraendert.
+menuInfo.NAME_TABLES = {
+    ST_CharaName = "/Game/Datatable/Strings/CharaName/ST_CharaName.ST_CharaName",
+    ST_UnitName = "/Game/Datatable/Strings/ST_Unit/ST_UnitName.ST_UnitName",
+}
+-- Spielfiguren und ??? sprechen mit, sind aber nie die angesprochene Person.
+menuInfo.PARTY_NAME_REFS = { "ST_CharaName:CharaName0001", "ST_CharaName:CharaName0002", "ST_CharaName:CharaName0003", "ST_CharaName:CharaName0004" }
+menuInfo.nameRefs = {}
+menuInfo.resolvedNames = {}
+
+function menuInfo.gameText(ref)
+    local tableName, key = ref:match("^(ST_[%w_]+):(.+)$")
+    local tablePath = tableName and menuInfo.NAME_TABLES[tableName]
+    if not tablePath then
+        return ref
+    end
+    if menuInfo.resolvedNames[ref] then
+        return menuInfo.resolvedNames[ref]
+    end
+    local ok, text = pcall(function()
+        local library = StaticFindObject("/Script/Engine.Default__KismetTextLibrary")
+        return library:TextFromStringTable(FName(tablePath), key):ToString()
+    end)
+    -- Fehlschlaege nicht merken: Die Tabelle kann beim ersten Versuch noch nicht geladen sein.
+    if not ok or not text or text == "" or text == key or text:find("MISSING") then
+        menuInfo.logLearn("Schluessel nicht lesbar: " .. ref .. " (" .. tostring(text) .. ")")
+        return nil
+    end
+    menuInfo.resolvedNames[ref] = text
+    return text
+end
+
+-- Rueckrichtung zum Lernen: gesprochener Name -> Schluessel, aus allen Schluesseln in namen_spiel.txt.
+function menuInfo.nameRef(text)
+    if not menuInfo.refByText then
+        local map = {}
+        for key, ref in pairs(menuInfo.nameRefs) do
+            if key:find("^Name:") then
+                local resolved = menuInfo.gameText(ref)
+                -- ST_CharaName vor ST_UnitName: Gleiche Texte gibt es in beiden.
+                if resolved and (not map[resolved] or ref:find("^ST_CharaName")) then
+                    map[resolved] = ref
+                end
+            end
+        end
+        if next(map) == nil then
+            return nil
+        end
+        menuInfo.refByText = map
+    end
+    return menuInfo.refByText[text]
+end
+
+function menuInfo.isPartySpeaker(text)
+    for _, ref in ipairs(menuInfo.PARTY_NAME_REFS) do
+        if menuInfo.gameText(ref) == text then
+            return true
+        end
+    end
+    return false
+end
+
+local npcNames = setmetatable({}, {
+    __index = function(_, key)
+        local ref = menuInfo.nameRefs[key]
+        return ref and menuInfo.gameText(ref) or nil
+    end,
+    __newindex = function(_, key, value)
+        menuInfo.nameRefs[key] = value
+    end,
+})
 local inputSubsystem = nil
 
 local function distance2D(a, b)
@@ -1958,18 +2029,21 @@ end
 
 -- Das Spiel gibt Kartenfiguren keinen lesbaren Namen, erst der Sprecher im Gespraech verraet ihn.
 -- Gemerkt wird er nur fuer diese Figur: m_MapUnitId ist das Aussehen, nicht der Name.
+-- Gespeichert wird der Schluessel der Namenstabelle, damit der Name auch in anderen Spielsprachen stimmt;
+-- nur wenn das Spiel den Namen nicht in seinen Tabellen hat, der Text selbst.
 local function rememberNpcName(key, name)
     if npcNames[key] == name then
         return
     end
-    npcNames[key] = name
+    local value = menuInfo.nameRef(name) or name
+    npcNames[key] = value
     local path = npcNamesPath()
     local file = path and io.open(path, "a")
     if file then
-        file:write(key .. "\t" .. name .. "\n")
+        file:write(key .. "\t" .. value .. "\n")
         file:close()
     end
-    log("Name gemerkt: " .. key .. " = " .. name)
+    log("Name gemerkt: " .. key .. " = " .. name .. " (" .. value .. ")")
 end
 
 -- Der Name kommt aus dem Sprecherfeld des Fensters; aus der Zeile geraten wuerde bei Zeilen ohne Sprecher
@@ -2001,7 +2075,8 @@ end
 
 local function learnNpcName(talkLine, window)
     local speaker = menuInfo.speakerOf(window)
-    if not speaker or speaker == "" or #speaker > 40 or NON_NPC_SPEAKERS[speaker] or speaker:find("？") then
+    if not speaker or speaker == "" or #speaker > 40 or NON_NPC_SPEAKERS[speaker] or speaker:find("？")
+            or menuInfo.isPartySpeaker(speaker) then
         menuInfo.logLearn("kein Sprecher (" .. tostring(speaker) .. ") in " .. (window and shortClassName(window) or "?"))
         return
     end
