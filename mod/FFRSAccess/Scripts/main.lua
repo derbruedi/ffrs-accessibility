@@ -1929,13 +1929,19 @@ local function npcNamesPath()
     return scriptsDir and (scriptsDir .. NPC_NAMES_FILE) or nil
 end
 
--- Erst die Sprechernamen aus den Spieldaten (namen_spiel.txt), danach die im Gespraech gemerkten.
+-- Erst die Sprechernamen aus den Spieldaten (namen_spiel.txt), dann die mitgelieferten, die beim Spielen
+-- gelernt wurden (namen_gelernt.txt), zuletzt die eigenen im Gespraech gemerkten.
 local function loadNpcNames()
     local path = npcNamesPath()
     if not path then
         return
     end
-    for _, filePath in ipairs({ (path:gsub(NPC_NAMES_FILE .. "$", "namen_spiel.txt")), path }) do
+    local files = {
+        (path:gsub(NPC_NAMES_FILE .. "$", "namen_spiel.txt")),
+        (path:gsub(NPC_NAMES_FILE .. "$", "namen_gelernt.txt")),
+        path,
+    }
+    for _, filePath in ipairs(files) do
         local file = io.open(filePath, "r")
         if file then
             for line in file:lines() do

@@ -1,0 +1,2 @@
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Matrose
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Älterer Mann

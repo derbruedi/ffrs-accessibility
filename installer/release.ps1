@@ -8,6 +8,14 @@ $root = Split-Path $PSScriptRoot -Parent
 $version = (Get-Content (Join-Path $root 'VERSION') -TotalCount 1).Trim()
 $tag = "v$version"
 
+# Beim Spielen gelernte Namen kommen mit ins Release.
+& (Join-Path $PSScriptRoot 'collect_names.ps1')
+$learned = 'mod/FFRSAccess/Scripts/namen_gelernt.txt'
+if (git -C $root status --porcelain -- $learned) {
+    git -C $root add -- $learned
+    git -C $root commit -q -m "Gelernte Namen übernommen" -- $learned
+}
+
 if (git -C $root status --porcelain) { throw "Es gibt nicht eingecheckte Aenderungen. Erst committen." }
 if (git -C $root tag --list $tag) { throw "Tag $tag gibt es schon. VERSION erhoehen." }
 
