@@ -29,6 +29,11 @@ $assets = (Join-Path $root 'dist\FFRSAccess-Setup.exe'), (Join-Path $root 'dist\
 if (-not $Notes) { $Notes = "Version $version. Setup herunterladen, Spiel beenden, Setup starten." }
 $flags = @()
 if ($version -match '[A-Za-z]') { $flags += '--prerelease' }
-gh release create $tag @assets --repo derbruedi/ffrs-accessibility --title "Version $version" --notes $Notes @flags
-if ($LASTEXITCODE) { throw "Release fehlgeschlagen" }
+# Notizen ueber eine Datei: PowerShell 5.1 zerlegt Argumente mit Anfuehrungszeichen falsch.
+$notesFile = Join-Path $env:TEMP "ffrs_release_notes.txt"
+[System.IO.File]::WriteAllText($notesFile, $Notes, (New-Object System.Text.UTF8Encoding $false))
+gh release create $tag @assets --repo derbruedi/ffrs-accessibility --title "Version $version" --notes-file $notesFile @flags
+$failed = $LASTEXITCODE
+Remove-Item $notesFile
+if ($failed) { throw "Release fehlgeschlagen" }
 Write-Output "Veroeffentlicht: $tag"
