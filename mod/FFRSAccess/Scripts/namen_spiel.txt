@@ -1,0 +1,460 @@
+/Game/Map/Dng/01Gra/01Gra_42/EV/Dng_01Gra_42_01_EV.Dng_01Gra_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Soldat
+/Game/Map/Dng/01Gra/01Gra_43/EV/Dng_01Gra_43_EV.Dng_01Gra_43_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Soldat
+/Game/Map/Dng/02Lan/02Lan_44/EV/Dng_02Lan_44_EV.Dng_02Lan_44_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Mutter
+/Game/Map/Dng/03Kol/03Kol_40/EV/Dng_03Kol_40_01_EV.Dng_03Kol_40_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Charlotte
+/Game/Map/Dng/04Dir/04Dir_43/EV/Dng_04Dir_43_01_EV.Dng_04Dir_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Borin
+/Game/Map/Dng/04Dir/04Dir_45/EV/Dng_04Dir_45_01_EV.Dng_04Dir_45_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Chloe
+/Game/Map/Dng/05Old/05Old_43/EV/Dng_05Old_43_01_EV.Dng_05Old_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Nichol
+/Game/Map/Dng/05Old/05Old_43/EV/Dng_05Old_43_01_EV.Dng_05Old_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Amelia
+/Game/Map/Dng/05Old/05Old_43/EV/Dng_05Old_43_01_EV.Dng_05Old_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Gilgamesch
+/Game/Map/Dng/06Zol/06Zol_40/EV/Dng_06Zol_40_01_EV.Dng_06Zol_40_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Alter Mann
+/Game/Map/Dng/06Zol/06Zol_40/EV/Dng_06Zol_40_01_EV.Dng_06Zol_40_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Jüngling
+/Game/Map/Dng/06Zol/06Zol_40/EV/Dng_06Zol_40_01_EV.Dng_06Zol_40_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Junge
+/Game/Map/Dng/06Zol/06Zol_40/EV/Dng_06Zol_40_01_EV.Dng_06Zol_40_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Gilgamesch
+/Game/Map/Dng/06Zol/06Zol_40/EV/Dng_06Zol_40_01_EV.Dng_06Zol_40_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Forscher
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Amelia
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Soldat
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Händler
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Stämmiger Mann
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Alte Frau
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Junge Frau
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Soldat
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Jüngling
+/Game/Map/Dng/06Zol/06Zol_43/EV/Dng_06Zol_43_01_EV.Dng_06Zol_43_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Jüngling
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Rebellensoldat
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Händler
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Amelia
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Jüngling
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Amelia
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Erwachsene
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Erwachsene
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Hauptmann von Zoldaad
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Soldat
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_23	Soldat
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_27	Soldat
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Rebellensoldat
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_31	Soldat
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Imperator Shera
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Soldat
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Alte Frau
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Alter Mann
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Kronprinz Shera
+/Game/Map/Dng/06Zol/06Zol_44/EV/Dng_06Zol_44_01_EV.Dng_06Zol_44_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Junge Frau
+/Game/Map/Dng/06Zol/06Zol_46/EV/Dng_06Zol_46_01_EV.Dng_06Zol_46_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Sakura
+/Game/Map/Dng/06Zol/06Zol_47/EV/Dng_06Zol_47_EV.Dng_06Zol_47_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Mann im Laborkittel
+/Game/Map/Dng/06Zol/06Zol_47/EV/Dng_06Zol_47_EV.Dng_06Zol_47_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Soldat
+/Game/Map/Dng/06Zol/06Zol_47/EV/Dng_06Zol_47_EV.Dng_06Zol_47_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Soldat
+/Game/Map/Dng/06Zol/06Zol_47/EV/Dng_06Zol_47_EV.Dng_06Zol_47_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Soldat
+/Game/Map/Dng/06Zol/06Zol_47/EV/Dng_06Zol_47_EV.Dng_06Zol_47_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Zivilistin
+/Game/Map/Dng/06Zol/06Zol_47/EV/Dng_06Zol_47_EV.Dng_06Zol_47_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Verhüllte Frau
+/Game/Map/Dng/07Mys/07Mys_41/EV/Dng_07Mys_41_01_EV.Dng_07Mys_41_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Alter Mann
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Weißmagierin
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Schwarzmagier
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Schwarzmagier
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Schwarzmagier
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Junger Zauberer
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Weißmagierin
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Weißmagierin
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Schwarzmagier
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_20	Junge Hexe
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Schwarzmagier
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Schwarzmagier
+/Game/Map/Dng/07Mys/07Mys_42/EV/Dng_07Mys_42_01_EV.Dng_07Mys_42_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Weißmagierin
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Tellus
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Tonitus
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Soldat
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Weißmagierin
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_21	Schwarzmagier
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_23	Sol
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_25	Soldat
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Äther
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Alluvion
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Ignis
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Gelidus
+/Game/Map/Dng/07Mys/07Mys_45/EV/Dng_07Mys_45_EV.Dng_07Mys_45_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Lux
+/Game/Map/Dng/07Mys/07Mys_49/EV/Dng_07Mys_49_01_EV.Dng_07Mys_49_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Wahre Victoria
+/Game/Map/Dng/10Cry/10Cry_41/EV/Dng_10Cry_41_01_EV.Dng_10Cry_41_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Mogry des Lichts
+/Game/Map/Dng/10Cry/10Cry_41/EV/Dng_10Cry_41_01_EV.Dng_10Cry_41_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Itemverkäufer
+/Game/Map/Dng/10Cry/10Cry_41/EV/Dng_10Cry_41_01_EV.Dng_10Cry_41_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Ausrüstungsverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Ausrüstungsverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Ausrüstungsverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Itemverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Itemverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Fina
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Itemverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Grandshelt-Soldat
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Sakura
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Itemverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_27	Evan
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Verun
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_30	Verun
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Schankwirt
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Lasswell
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Ausrüstungsverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Ausrüstungsverkäufer
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Lid
+/Game/Map/Town/00Com/00Com_01/EV/Town_00Com_01_EV.Town_00Com_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Mogry des Lichts
+/Game/Map/Town/00Com/00Com_03/EV/Town_00Com_03_01_EV.Town_00Com_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Raegen
+/Game/Map/Town/00Com/00Com_03/EV/Town_00Com_03_01_EV.Town_00Com_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Erzhexe Fina
+/Game/Map/Town/00Com/00Com_03/EV/Town_00Com_03_01_EV.Town_00Com_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Nichol
+/Game/Map/Town/00Com/00Com_03/EV/Town_00Com_03_01_EV.Town_00Com_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Jake
+/Game/Map/Town/00Com/00Com_03/EV/Town_00Com_03_01_EV.Town_00Com_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Camille
+/Game/Map/Town/00Com/00Com_03/EV/Town_00Com_03_01_EV.Town_00Com_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Aileen
+/Game/Map/Town/00Com/00Com_03/EV/Town_00Com_03_01_EV.Town_00Com_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Gilgamesch
+/Game/Map/Town/01Gra/01Gra_02/EV/Town_01Gra_02_01_EV.Town_01Gra_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Stämmiger Mann
+/Game/Map/Town/01Gra/01Gra_02/EV/Town_01Gra_02_01_EV.Town_01Gra_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Soldat
+/Game/Map/Town/01Gra/01Gra_02/EV/Town_01Gra_02_01_EV.Town_01Gra_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Stämmiger Mann
+/Game/Map/Town/01Gra/01Gra_02/EV/Town_01Gra_02_01_EV.Town_01Gra_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Soldat
+/Game/Map/Town/01Gra/01Gra_02/EV/Town_01Gra_02_01_EV.Town_01Gra_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Scott
+/Game/Map/Town/01Gra/01Gra_02/EV/Town_01Gra_02_01_EV.Town_01Gra_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Charlotte
+/Game/Map/Town/01Gra/01Gra_02/EV/Town_01Gra_02_01_EV.Town_01Gra_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Soldat
+/Game/Map/Town/01Gra/01Gra_02/EV/Town_01Gra_02_01_EV.Town_01Gra_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Erwachsene
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Mogry des Lichts
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Mädchen
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Alter Mann
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Stämmiger Mann
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Stämmiger Mann
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Soldat
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Junge Frau
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Alter Mann
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Erwachsene
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Erwachsener
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Soldat
+/Game/Map/Town/01Gra/01Gra_04/EV/Town_01Gra_04_01_EV.Town_01Gra_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Jüngling
+/Game/Map/Town/01Gra/01Gra_05/EV/Town_01Gra_05_01_EV.Town_01Gra_05_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Jüngling
+/Game/Map/Town/01Gra/01Gra_05/EV/Town_01Gra_05_01_EV.Town_01Gra_05_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Alter Mann
+/Game/Map/Town/01Gra/01Gra_05/EV/Town_01Gra_05_01_EV.Town_01Gra_05_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Junge Frau
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Mädchen
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Jüngling
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Alter Mann
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Jüngling
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Alter Mann
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_20	Junge
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_21	Erwachsener
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_30	Händler
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_33	Händler
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_36	Junge Frau
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Junge
+/Game/Map/Town/01Gra/01Gra_20/EV/Town_01Gra_20_EV.Town_01Gra_20_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Alte Frau
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	König von Grandshelt
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Soldat
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Stämmiger Mann
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Soldat
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Händler
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_22	Zofe
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_24	Soldat
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_27	Charlotte
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Soldat
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_32	Soldat
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_33	Zofe
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Alter Mann
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Soldat
+/Game/Map/Town/01Gra/01Gra_21/EV/Town_01Gra_21_01_EV.Town_01Gra_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Frau
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Erwachsene
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Alter Mann
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Junge
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Freundliche Frau
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Erwachsene
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Jüngling
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Alte Frau
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Scott
+/Game/Map/Town/02Lan/02Lan_20/EV/Town_02Lan_20_01_EV.Town_02Lan_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Chocobo-Stallbursche
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Hauptmann
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Junge
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Mädchen
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Erwachsener
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Händler
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Jüngling
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_20	Jüngling
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_21	Jüngling
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_23	Waffenverkäufer
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_30	Kutscher
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_35	Soldat
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Rüstungsverkäufer
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_40	Erwachsener
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_45	Erwachsene
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_46	Junge
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_50	Mogry des Lichts
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_54	Soldat
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Junge Frau
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Charlotte
+/Game/Map/Town/02Lan/02Lan_21/EV/Town_02Lan_21_01_EV.Town_02Lan_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Junge Frau
+/Game/Map/Town/02Lan/02Lan_22/EV/Town_02Lan_22_01_EV.Town_02Lan_22_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Mysteriöse Prinzessin
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Waffenverkäufer
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Alte Frau
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Emma
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Emmas Tante
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Chloe
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Emmas Tante
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_21	Jüngling
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_22	Minenarbeiter
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_23	Stämmiger Mann
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_26	Fröhliches Kind
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_28	Forscher
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Händler
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_34	Rolan
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Forscherin
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Erwachsener
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Alter Mann
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Rüstungsverkäufer
+/Game/Map/Town/03Kol/03Kol_20/EV/Town_03Kol_20_01_EV.Town_03Kol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Fröhliches Kind
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Jüngling
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Rüstungsverkäufer
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Mogry des Lichts
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Waffenverkäufer
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Matrose
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Erwachsener
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_23	Schankwirt
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_25	Erwachsener
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_26	Jüngling
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Erwachsener
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_32	Soldat
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_34	Alter Mann
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Erwachsene
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_40	Silvia
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Jüngling
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Jüngling
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Mädchen
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Jüngling
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_01_EV.Town_04Dir_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Händler
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Redseliges Mädchen
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Militäringenieur
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Rüstungsverkäufer
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Mogry des Lichts
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Waffenverkäufer
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Matrose
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Erwachsener
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_25	Erwachsener
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Erwachsener
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_32	Soldat
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_34	Alter Mann
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Erwachsene
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_40	Silvia
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Jüngling
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Jüngling
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Mädchen
+/Game/Map/Town/04Dir/04Dir_01/EV/Town_04Dir_01_04_EV.Town_04Dir_01_04_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Händler
+/Game/Map/Town/04Dir/04Dir_02/EV/Town_04Dir_02_01_EV.Town_04Dir_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Soldat
+/Game/Map/Town/04Dir/04Dir_02/EV/Town_04Dir_02_01_EV.Town_04Dir_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Aileen
+/Game/Map/Town/04Dir/04Dir_02/EV/Town_04Dir_02_01_EV.Town_04Dir_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_37	Alter Mann
+/Game/Map/Town/04Dir/04Dir_02/EV/Town_04Dir_02_01_EV.Town_04Dir_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Soldat
+/Game/Map/Town/04Dir/04Dir_02/EV/Town_04Dir_02_01_EV.Town_04Dir_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Jüngling
+/Game/Map/Town/04Dir/04Dir_02/EV/Town_04Dir_02_01_EV.Town_04Dir_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_53	Junge Frau
+/Game/Map/Town/04Dir/04Dir_02/EV/Town_04Dir_02_01_EV.Town_04Dir_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Jüngling
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Zwerg
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Borin
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Zwerg
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Zwerg
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Zwerg
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Verun
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Zwerg
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Borin
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Roy
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Silvia
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Lid
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_22	Fryevia
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_24	Silvia
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_26	Roy
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Mogry des Lichts
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Zwerg
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Verun
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Zwerg
+/Game/Map/Town/04Dir/04Dir_20/EV/Town_04Dir_20_01_EV.Town_04Dir_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Zwerg
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Alte Frau
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Soldat
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Erwachsener
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Jüngling
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Imperator Shera
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Waffenverkäufer
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Rüstungsverkäufer
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_20	Erwachsener
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_22	Jüngling
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_23	Erwachsener
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_24	Matrose
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_25	Erwachsener
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_26	Erwachsene
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_27	Schankwirt
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_28	Mogry des Lichts
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Jüngling
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_30	Matrose
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_31	Soldat
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_34	Ilias
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_35	Erwachsener
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_36	Erwachsener
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_38	Erwachsene
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_39	Nichol
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Soldat
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_42	Dalim
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_43	Soldat
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_44	Soldat
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_46	Dalim
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Itemverkäufer
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_65	Alte Frau
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_75	Alte Frau
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_78	Matrose
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Nichol
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_80	Jüngling
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_81	Junge Frau
+/Game/Map/Town/05Old/05Old_01/EV/Town_05Old_01_01_EV.Town_05Old_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Alter Mann
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Alte Frau
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Rüstungsverkäufer
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Waffenverkäufer
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Junge Frau
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Mogry des Lichts
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Jüngling
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Junge
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Soldat
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Jüngling
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_21	Jüngling
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Junge
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Alter Mann
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Frau
+/Game/Map/Town/05Old/05Old_21/EV/Town_05Old_21_01_EV.Town_05Old_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Itemverkäufer
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Forscher
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Techniker
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Junge Frau
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Soldat
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Lebhaftes Mädchen
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Jüngling
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Alter Mann
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Foxie
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Erwachsener
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Jüngling
+/Game/Map/Town/06Zol/06Zol_01/EV/Town_06Zol_01_01_EV.Town_06Zol_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Jüngling
+/Game/Map/Town/06Zol/06Zol_02/EV/Town_06Zol_02_01_EV.Town_06Zol_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Erwachsene
+/Game/Map/Town/06Zol/06Zol_02/EV/Town_06Zol_02_01_EV.Town_06Zol_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Soldat
+/Game/Map/Town/06Zol/06Zol_02/EV/Town_06Zol_02_01_EV.Town_06Zol_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Ozetta
+/Game/Map/Town/06Zol/06Zol_02/EV/Town_06Zol_02_01_EV.Town_06Zol_02_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Soldat
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Stämmiger Mann
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Mogry des Lichts
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Verhüllter Mann
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Waffenverkäufer
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Itemverkäufer
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Jüngling
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Itemverkäufer
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Waffenverkäufer
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Rüstungsverkäufer
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Stämmiger Mann
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Erwachsene
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Rüstungsverkäufer
+/Game/Map/Town/06Zol/06Zol_03/EV/Town_06Zol_03_01_EV.Town_06Zol_03_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Jüngling
+/Game/Map/Town/06Zol/06Zol_04/EV/Town_06Zol_04_01_EV.Town_06Zol_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Junge
+/Game/Map/Town/06Zol/06Zol_04/EV/Town_06Zol_04_01_EV.Town_06Zol_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Techniker
+/Game/Map/Town/06Zol/06Zol_04/EV/Town_06Zol_04_01_EV.Town_06Zol_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Imperialer Soldat
+/Game/Map/Town/06Zol/06Zol_04/EV/Town_06Zol_04_01_EV.Town_06Zol_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Jüngling
+/Game/Map/Town/06Zol/06Zol_04/EV/Town_06Zol_04_01_EV.Town_06Zol_04_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Alte Frau
+/Game/Map/Town/06Zol/06Zol_05/EV/Town_06Zol_05_01_EV.Town_06Zol_05_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Liebenswürdiger Junge
+/Game/Map/Town/06Zol/06Zol_05/EV/Town_06Zol_05_01_EV.Town_06Zol_05_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Ausrüstungsverkäufer
+/Game/Map/Town/06Zol/06Zol_05/EV/Town_06Zol_05_01_EV.Town_06Zol_05_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Itemverkäufer
+/Game/Map/Town/06Zol/06Zol_05/EV/Town_06Zol_05_01_EV.Town_06Zol_05_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Junge
+/Game/Map/Town/06Zol/06Zol_20/EV/Town_06Zol_20_01_EV.Town_06Zol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Itemverkäufer
+/Game/Map/Town/06Zol/06Zol_20/EV/Town_06Zol_20_01_EV.Town_06Zol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Bahnhofsvorsteher
+/Game/Map/Town/06Zol/06Zol_20/EV/Town_06Zol_20_01_EV.Town_06Zol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Soldat
+/Game/Map/Town/06Zol/06Zol_20/EV/Town_06Zol_20_01_EV.Town_06Zol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Erwachsener
+/Game/Map/Town/06Zol/06Zol_20/EV/Town_06Zol_20_01_EV.Town_06Zol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Soldat
+/Game/Map/Town/06Zol/06Zol_20/EV/Town_06Zol_20_01_EV.Town_06Zol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Jüngling
+/Game/Map/Town/06Zol/06Zol_20/EV/Town_06Zol_20_01_EV.Town_06Zol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Jüngling
+/Game/Map/Town/06Zol/06Zol_20/EV/Town_06Zol_20_01_EV.Town_06Zol_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Stämmiger Mann
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Ehemaliger Rebell
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Nichol
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Mogry des Lichts
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Simon
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_22	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_26	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Jake
+/Game/Map/Town/06Zol/06Zol_21/EV/Town_06Zol_21_01_EV.Town_06Zol_21_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Rebellensoldat
+/Game/Map/Town/06Zol/06Zol_22/EV/Town_06Zol_22_01_EV.Town_06Zol_22_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Bahnhofsvorsteher
+/Game/Map/Town/06Zol/06Zol_22/EV/Town_06Zol_22_01_EV.Town_06Zol_22_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Junge Frau
+/Game/Map/Town/06Zol/06Zol_23/EV/Town_06Zol_23_01_EV.Town_06Zol_23_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Itemverkäufer
+/Game/Map/Town/06Zol/06Zol_23/EV/Town_06Zol_23_01_EV.Town_06Zol_23_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Erwachsene
+/Game/Map/Town/06Zol/06Zol_23/EV/Town_06Zol_23_01_EV.Town_06Zol_23_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Jüngling
+/Game/Map/Town/06Zol/06Zol_23/EV/Town_06Zol_23_01_EV.Town_06Zol_23_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Bahnhofsvorsteher
+/Game/Map/Town/06Zol/06Zol_23/EV/Town_06Zol_23_01_EV.Town_06Zol_23_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Erwachsener
+/Game/Map/Town/06Zol/06Zol_23/EV/Town_06Zol_23_01_EV.Town_06Zol_23_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Alter Mann
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Aufgeweckter Mogry
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Rüstungsverkäufer
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Junge Hexe
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Schwarzmagier
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Schwarzmagier
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Schwarzmagier
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Sakura
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Schwarzmagier
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Sakura
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_21	Junger Zauberer
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_22	Weißmagierin
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_23	Weißmagierin
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_25	Sympathischer Mogry
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_28	Weißmagierin
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_29	Aufgeweckter Mogry
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Waffenverkäufer
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_30	Schwarzmagier
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_32	Weißmagierin
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_34	Sakura
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_35	Weißmagierin
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_37	Junge Hexe
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Itemverkäufer
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Schwarzmagier
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Junger Zauberer
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Mogry des Lichts
+/Game/Map/Town/07Mys/07Mys_01/EV/Town_07Mys_01_01_EV.Town_07Mys_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Katze
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Erwachsener
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Mädchen
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Itemverkäufer
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Waffenverkäufer
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Rüstungsverkäufer
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Junge
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Mogry des Lichts
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_20	Älterer Mann
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_21	Junge
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Erwachsene
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Weißmagierin
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Erwachsene
+/Game/Map/Town/07Mys/07Mys_20/EV/Town_07Mys_20_EV.Town_07Mys_20_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Dorfoberhaupt
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Forscher
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Itemverkäufer
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Ausrüstungsverkäufer
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_12	Sakura
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Dorfälteste
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Erwachsener
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Rücksichtsvoller Mann
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Forscherin
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_18	Fryevia
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_19	Rücksichtsvoller Mann
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_20	Forscher
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Forscher
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Erwachsener
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Mogry des Lichts
+/Game/Map/Town/08Gro/08Gro_01/EV/Town_08Gro_01_01_EV.Town_08Gro_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Mann im Versteck
+/Game/Map/Town/08Gro/08Gro_20/EV/Town_08Gro_20_01_EV.Town_08Gro_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_1	Jüngling
+/Game/Map/Town/08Gro/08Gro_20/EV/Town_08Gro_20_01_EV.Town_08Gro_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_3	Itemverkäufer
+/Game/Map/Town/08Gro/08Gro_20/EV/Town_08Gro_20_01_EV.Town_08Gro_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Ausrüstungsverkäufer
+/Game/Map/Town/08Gro/08Gro_20/EV/Town_08Gro_20_01_EV.Town_08Gro_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_5	Alte Frau
+/Game/Map/Town/08Gro/08Gro_20/EV/Town_08Gro_20_01_EV.Town_08Gro_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_6	Mogry des Lichts
+/Game/Map/Town/08Gro/08Gro_20/EV/Town_08Gro_20_01_EV.Town_08Gro_20_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Jüngling
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_0	Alte Frau
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_10	Ayaka
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_11	Waffenverkäufer
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_13	Alter Mann
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_14	Waffenverkäufer
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_15	Mogry des Lichts
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_16	Erwachsener
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_17	Samurai
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_2	Erwachsene
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_20	Erwachsener
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_21	Rüstungsverkäufer
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_22	Älterer Mann
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_23	Erwachsene
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_24	Itemverkäufer
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_4	Alte Frau
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_7	Itemverkäufer
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_8	Rüstungsverkäufer
+/Game/Map/Town/09Pha/09Pha_01/EV/Town_09Pha_01_01_EV.Town_09Pha_01_01_EV:PersistentLevel.BP_MapUnit_NPC_C_9	Katze
+/Game/Map/Wld/EV/Wld_01Gra_EV.Wld_01Gra_EV:PersistentLevel.BP_MapUnit_NPC_Field_C_2	Händler
+Punkt グランシェルト城内玉座の間	Thronsaal

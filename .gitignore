@@ -1,0 +1,23 @@
+# Bauergebnisse
+build/
+dist/
+bin/
+obj/
+
+# Spieldaten und Auszuege: nicht weitergeben
+research/dumps/
+research/screens/
+research/extract/out/
+research/extract/out_full/
+research/extract/src/
+*.usmap
+oodle-data-shared.dll
+
+# Beim Spielen entstehende Dateien der Mod
+mod/FFRSAccess/Scripts/npc_names.txt
+mod/FFRSAccess/Scripts/wege*.txt
+*.log
+__pycache__/
+
+# Prism wird zum Bauen der Sprach-DLL gebraucht
+!third_party/prism/bin/

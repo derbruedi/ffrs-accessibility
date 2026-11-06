@@ -1,0 +1,87 @@
+FINAL FANTASY RESONANCE Zugang
+==============================
+
+Eine Mod, die FINAL FANTASY RESONANCE über einen Screenreader spielbar macht
+(NVDA, JAWS und andere, über die Bibliothek Prism). Sie liest Menüs,
+Dialoge, Gespräche, Kämpfe und Ergebnisse vor und hat einen Pathfinder, der
+die Figur zu Zielen läuft.
+
+Die Mod läuft mit UE4SS im Spiel mit. Sie verändert keine Spieldateien und
+umgeht keinen Kopierschutz.
+
+
+Installation
+------------
+
+1. Das Spiel beenden.
+2. FFRSAccess-Setup.exe starten.
+3. Das Setup sucht das Spiel in den Steam-Bibliotheken. Der Fokus steht im
+   Feld Spielordner, darin der gefundene Ordner. Man kann einen anderen
+   Ordner eintippen oder mit Alt+D durchsuchen, zum Beispiel
+   D:\SteamLibrary\steamapps\common\FINAL FANTASY RESONANCE
+4. Enter oder Alt+I installiert. Eine Meldung sagt, wann es fertig ist.
+   Alle Meldungen stehen außerdem im Feld Meldungen (Alt+M).
+5. Das Spiel starten. Die Mod meldet sich mit
+   "Final Fantasy Resonance Zugang geladen."
+
+Updates: Beim Start schaut das Setup auf GitHub
+(github.com/derbruedi/ffrs-accessibility) nach einer neueren Version. Gibt
+es eine, fragt es, ob es sie herunterladen und installieren soll. Bei Ja
+lädt es das neue Setup und installiert damit gleich in den Spielordner aus
+dem Feld. Versionen mit "b" am Ende (zum Beispiel 0.1.0b) sind Betaversionen.
+
+Liegt das Spiel unter "Programme", fragt das Setup nach
+Administratorrechten und startet sich dafür neu.
+
+Statt der Exe geht auch Installieren.bat aus dem Zip-Paket, auf Wunsch
+ohne Nachfrage:
+   Installieren.bat -GameDir "D:\Pfad\zum\Spielordner"
+
+Ist UE4SS schon installiert, bleiben dessen Einstellungen und die Mod-Liste
+erhalten. Bei einem Update der Mod bleiben gelernte Namen und gescannte
+Wegekarten erhalten.
+
+Deinstallation: im Setup Alt+E. Soll UE4SS ebenfalls weg, vorher das
+Kontrollkästchen "auch UE4SS entfernen" (Alt+U) ankreuzen. Im Zip-Paket
+macht das Deinstallieren.bat.
+
+
+Tasten
+------
+
+Pathfinder:
+  Umschalt+Bild hoch/runter   Kategorie wechseln (Questziel, Story-Ereignisse,
+                              Personen, Gegner, Schätze, Ausgänge, Türen,
+                              Speicherpunkte, Objekte, Erkunden)
+  Bild hoch/runter            Ziel in der Kategorie wählen
+  Pos1                        Zum Ziel laufen, nochmal Pos1 bricht ab
+  Pos1 in "Questziel"         Questreise an/aus: läuft Abschnitt für Abschnitt
+                              zum Questziel und macht nach Szenen, Kämpfen und
+                              Kartenwechseln selbst weiter. Enter drückt man
+                              selbst, wenn die Figur angekommen ist.
+
+Sonstiges:
+  Ende                        Aktuelles Questziel vorlesen
+  G                           Gil vorlesen (in Gesprächen öffnet G das
+                              Gesprächslog des Spiels)
+  Strg+R                      Aktuellen Bildschirm noch einmal vorlesen
+  Strg+T                      Wandtöne an/aus (Töne für Wände vorne, links,
+                              rechts und hinten)
+
+Tasten des Spiels in Gesprächen: G Gesprächslog, R automatisch weiter,
+1 Szene überspringen, C oder Rücktaste Text überspringen.
+
+
+Bei Problemen
+-------------
+
+Die Mod schreibt alles in diese Datei im Spielordner:
+  FFRS\Binaries\Win64\ue4ss\UE4SS.log
+Bitte diese Datei mitschicken, wenn etwas nicht vorgelesen wird.
+
+
+Enthaltene Software
+-------------------
+
+UE4SS (RE-UE4SS), MIT-Lizenz, siehe Lizenzen\UE4SS.txt
+Prism und dessen Bestandteile, siehe Ordner Lizenzen\prism
