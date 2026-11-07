@@ -2224,13 +2224,33 @@ function menuInfo.actionWord(objectType, interactType)
     return menuInfo.actionWords[key] or nil
 end
 
+-- Art des Objekts nach Klasse. Das Spiel hat dafuer keine Namen, nur das Aktionswort; ein sehender Spieler erkennt
+-- die Art aber am Aussehen (Wunsch User 07.11., Werft: neun Mal "Untersuchen"). Reihenfolge zaehlt: CallSwitch vor Switch.
+menuInfo.OBJECT_KINDS = {
+    { "Floor_Elevator", "Aufzug" }, { "CallSwitch", "Rufschalter für Aufzug" }, { "Switch", "Schalter" },
+    { "Lamp", "Lampe" }, { "MagicPot", "Topf" }, { "Medal", "Medaille" }, { "FieldItem", "Fundstück" },
+    { "Ladder", "Leiter" },
+}
+
+function menuInfo.objectKind(actor)
+    local name = actor and objectName(actor) or ""
+    for _, entry in ipairs(menuInfo.OBJECT_KINDS) do
+        if name:find(entry[1], 1, true) then
+            return entry[2]
+        end
+    end
+    return nil
+end
+
 function menuInfo.displayLabel(label, actor, objectType)
     if menuInfo.GAME_WORDS[label] then
         return menuInfo.GAME_WORDS[label]
     end
     local interactType = actor and interactTypeOf(actor)
     local word = interactType and menuInfo.actionWord(objectType or 2, interactType)
-    return word or menuInfo.ACTION_FALLBACK[label] or label
+    word = word or menuInfo.ACTION_FALLBACK[label] or label
+    local kind = objectType ~= 1 and menuInfo.objectKind(actor)
+    return kind and (word .. ", " .. kind) or word
 end
 
 local function targetLabel(actor, source, info, path)
@@ -2794,6 +2814,9 @@ local navGrid = {
     SMALL_FIGURE_BUDGET_SECONDS = 0.006,
     SMALL_FIGURE_HEIGHT = 60,
     RETRY_SECONDS = 3,
+    -- Wie oft ein Punkt ohne Verbindung neu erfasst wird.
+    REOPEN_SECONDS = 10,
+    reopenAt = {},
     BLOCK_RADIUS = 75,
     OBSTACLE_REACH = 120,
     OBSTACLE_WORDS = {
@@ -3104,6 +3127,7 @@ function navGrid.reset(level, useFile)
     navGrid.nodes, navGrid.cells, navGrid.frontier = {}, {}, {}
     navGrid.head, navGrid.tail, navGrid.count, navGrid.complete, navGrid.scanStarted = 1, 0, 0, false, nil
     navGrid.blockLogs = 0
+    navGrid.reopenAt = {}
     navGrid.prebuilt = useFile and navGrid.loadPrebuilt(level)
     if navGrid.prebuilt then
         navGrid.fromFile, navGrid.complete, navGrid.announceFinish = false, true, false
@@ -3143,10 +3167,56 @@ function navGrid.checkMap()
     if level ~= navGrid.level then
         navGrid.reset(level, true)
     end
+    if navGrid.prebuilt or not navGrid.canSeed(pawn) then
+        return
+    end
     local location = pawn:K2_GetActorLocation()
-    if not navGrid.prebuilt and not navGrid.nearest(location) then
+    local near = navGrid.nearest(location)
+    if near and navGrid.isIsolated(near) and now >= (navGrid.reopenAt[near.key] or 0) then
+        -- Werft 07.11.: Oben am Aufzug lag nur ein Punkt aus der Fahrt ohne Verbindung, die obere Ebene
+        -- wurde nie erfasst. Solche Punkte verwerfen und von der Figur aus neu beginnen.
+        navGrid.reopenAt[near.key] = now + navGrid.REOPEN_SECONDS
+        log(string.format("Wegekarte: Punkt %.0f %.0f %.0f ohne Verbindung, erfasse neu ab Figur", near.X, near.Y, near.Z))
+        navGrid.removeNode(near)
+        near = nil
+        navGrid.blockLogs = 0
+        navGrid.announceFinish = false
+    end
+    if not near then
         navGrid.scanStarted = navGrid.scanStarted or os.clock()
         navGrid.seed(location)
+    end
+end
+
+-- Waehrend Aufzugfahrten, Spruengen und Szenen nicht neu ansetzen: Die Punkte laegen mitten in der Luft.
+function navGrid.canSeed(pawn)
+    local ok, steady = pcall(function()
+        if pawn.m_IsEnableUnitInput == false then
+            return false
+        end
+        local velocity = pawn:GetVelocity()
+        return math.abs(velocity.Z) < 5
+    end)
+    return not ok or steady
+end
+
+function navGrid.isIsolated(node)
+    for index = 1, #navGrid.DIRECTIONS do
+        if node.links[index] ~= false then
+            return false
+        end
+    end
+    return true
+end
+
+function navGrid.removeNode(node)
+    navGrid.nodes[node.key] = nil
+    navGrid.count = navGrid.count - 1
+    local list = navGrid.cells[node.ix .. ":" .. node.iy] or {}
+    for index = #list, 1, -1 do
+        if list[index] == node then
+            table.remove(list, index)
+        end
     end
 end
 
@@ -4204,7 +4274,8 @@ function navRoute.withAction(name, objectType, interactType)
         log("Aktionswort " .. key .. ": " .. tostring(text))
     end
     local word = navRoute.actionWords[key]
-    return word and word ~= name and (name .. ": " .. word) or name
+    -- "Untersuchen, Schalter" beginnt schon mit dem Aktionswort.
+    return word and name:sub(1, #word) ~= word and (name .. ": " .. word) or name
 end
 
 function navRoute.tickPrompt()
