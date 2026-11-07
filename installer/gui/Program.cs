@@ -11,6 +11,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Security.Principal;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -33,6 +34,33 @@ namespace FFRSSetup
     internal static class Installer
     {
         public const string ExeRelative = @"FFRS\Binaries\Win64\FFRS-Win64-Shipping.exe";
+
+        // Protokoll fuer Rueckfragen: jede Meldung landet auch hier, auch aus dem Neustart mit Adminrechten.
+        public static readonly string LogPath = Path.Combine(Path.GetTempPath(), "FFRSAccess-Setup.log");
+
+        public static void Log(string line)
+        {
+            try
+            {
+                File.AppendAllText(LogPath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + (IsElevated() ? " [Admin] " : " ") + line + Environment.NewLine);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        public static bool IsElevated()
+        {
+            try
+            {
+                using (var identity = WindowsIdentity.GetCurrent())
+                    return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
 
         // Steam-Bibliotheken aus libraryfolders.vdf, darin jeder Ordner, der mit FINAL FANTASY RESONANCE beginnt.
         public static List<string> FindGameDirs()
@@ -125,6 +153,7 @@ namespace FFRSSetup
             var modDir = Path.Combine(win64, @"ue4ss\Mods\FFRSAccess");
             bool hadUe4ss = File.Exists(Path.Combine(win64, @"ue4ss\UE4SS.dll"));
             int written = 0;
+            var targets = new List<string>();
             using (var zip = OpenPayload())
             {
                 foreach (var entry in zip.Entries)
@@ -146,11 +175,26 @@ namespace FFRSSetup
                         target = Path.Combine(modDir, name.Replace('/', '\\'));
                     }
                     Directory.CreateDirectory(Path.GetDirectoryName(target));
-                    entry.ExtractToFile(target, true);
+                    try
+                    {
+                        entry.ExtractToFile(target, true);
+                    }
+                    catch (IOException ex)
+                    {
+                        // Virenscanner blockieren oft dwmapi.dll oder UE4SS.dll; Meldung soll die Datei nennen.
+                        throw new IOException($"{target} konnte nicht geschrieben werden: {ex.Message}", ex);
+                    }
+                    targets.Add(target);
                     written++;
                 }
             }
             File.WriteAllText(Path.Combine(modDir, "enabled.txt"), "");
+            // Ein Virenscanner kann Dateien gleich nach dem Schreiben wieder entfernen.
+            System.Threading.Thread.Sleep(1500);
+            var missing = targets.Where(t => !File.Exists(t)).ToList();
+            if (missing.Count > 0)
+                throw new IOException("Diese Dateien wurden geschrieben, sind aber wieder verschwunden, vermutlich hat ein Virenscanner sie entfernt: "
+                    + string.Join(", ", missing.Select(Path.GetFileName)));
             report(hadUe4ss ? "UE4SS aktualisiert, vorhandene Einstellungen behalten." : "UE4SS installiert.");
             report($"Mod FFRSAccess installiert, {written} Dateien.");
         }
@@ -386,14 +430,18 @@ namespace FFRSSetup
 
         private void Report(string line)
         {
+            Installer.Log(line);
             statusBox.AppendText((statusBox.TextLength > 0 ? Environment.NewLine : "") + line);
         }
 
         private void OnStart()
         {
             // Nach dem Neustart mit Adminrechten: --install <Ordner> oder --uninstall <Ordner> [--ue4ss]
+            Installer.Log($"Setup {Updater.CurrentVersion} gestartet: {Application.ExecutablePath} {string.Join(" ", startArgs)}");
             if (startArgs.Length >= 2)
             {
+                // Das Fenster nach der Admin-Abfrage kann hinter anderen Fenstern landen.
+                Activate();
                 pathBox.Text = startArgs[1];
                 removeUe4ssBox.Checked = startArgs.Contains("--ue4ss");
                 pathBox.Focus();
@@ -463,7 +511,7 @@ namespace FFRSSetup
                 var setup = await Updater.DownloadAsync(release);
                 // Das neue Setup installiert gleich in den Ordner aus dem Feld, sonst startet es normal.
                 var game = Installer.ResolveGameDir(pathBox.Text);
-                var arguments = game != null ? $"--install \"{game}\"" : "";
+                var arguments = game != null ? $"--install \"{game.TrimEnd('\\')}\"" : "";
                 Process.Start(new ProcessStartInfo(setup, arguments) { UseShellExecute = true });
                 Close();
             }
@@ -531,9 +579,20 @@ namespace FFRSSetup
                 Report(doneMessage);
                 Tell(doneMessage, MessageBoxIcon.Information);
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                Report("Keine Schreibrechte im Spielordner.");
+                Report("Keine Schreibrechte: " + ex.Message);
+                if (Installer.IsElevated())
+                {
+                    // Schon mit Adminrechten: ein weiterer Neustart hilft nicht, sonst entsteht eine Schleife.
+                    var message = "Auch mit Administratorrechten ist das Schreiben im Spielordner gesperrt: " + ex.Message
+                        + " Häufige Ursache ist der Windows-Schutz „Überwachter Ordnerzugriff“ oder ein Virenscanner. Das Protokoll liegt unter " + Installer.LogPath + ".";
+                    Report(message);
+                    Tell(message, MessageBoxIcon.Error);
+                    SetBusy(false);
+                    statusBox.Focus();
+                    return;
+                }
                 var answer = MessageBox.Show(this, "Für diesen Ordner braucht das Setup Administratorrechte. Mit Administratorrechten neu starten?",
                     Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (answer == DialogResult.Yes && RestartElevated(mode, game))
@@ -544,8 +603,8 @@ namespace FFRSSetup
             }
             catch (Exception ex)
             {
-                Report("Fehler: " + ex.Message);
-                Tell("Das hat nicht geklappt: " + ex.Message, MessageBoxIcon.Error);
+                Report("Fehler: " + ex);
+                Tell("Das hat nicht geklappt: " + ex.Message + " Das Protokoll liegt unter " + Installer.LogPath + ".", MessageBoxIcon.Error);
             }
             finally
             {
@@ -558,7 +617,9 @@ namespace FFRSSetup
         {
             try
             {
-                var arguments = $"{mode} \"{game}\"" + (removeUe4ssBox.Checked ? " --ue4ss" : "");
+                // Ein Backslash am Ende wuerde das schliessende Anfuehrungszeichen maskieren.
+                var arguments = $"{mode} \"{game.TrimEnd('\\')}\"" + (removeUe4ssBox.Checked ? " --ue4ss" : "");
+                Report("Starte mit Administratorrechten neu: " + arguments);
                 Process.Start(new ProcessStartInfo(Application.ExecutablePath, arguments) { Verb = "runas", UseShellExecute = true });
                 return true;
             }
