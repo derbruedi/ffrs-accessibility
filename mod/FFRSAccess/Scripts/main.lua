@@ -3737,6 +3737,8 @@ local navRoute = {
     },
     FLOOR_HEIGHT = 300,
     END_DISTANCE = 60,
+    -- Letzter Schritt an ein Objekt heran, wenn das Spiel am Wegende noch keine Aktion anbietet.
+    APPROACH_SECONDS = 2.5,
     SIDESTEP_SECONDS = 0.8,
     MAX_STUCK = 12,
     PROMPT_SECONDS = 0.5,
@@ -4322,6 +4324,9 @@ function navRoute.finished(walk, location)
     if navRoute.inInteractRange(walk.pawn, walk.actor) then
         return "arrived"
     end
+    if walk.approachUntil then
+        return os.clock() >= walk.approachUntil and "arrived" or nil
+    end
     if not walk.routed then
         return straight <= WALK_ARRIVAL_DISTANCE and "arrived" or nil
     end
@@ -4814,6 +4819,20 @@ local function tickWalk()
     if finished == "arrived" then
         local inRange = navRoute.inInteractRange(activeWalk.pawn, activeWalk.actor)
         log("Ankunft: in Reichweite " .. tostring(inRange))
+        if not inRange and not activeWalk.approachUntil and not navRoute.chain then
+            -- Werft 07.11.: Am Rufschalter blieb die Figur 1,5 m davor stehen, das Spiel bot nichts an. Das Spiel
+            -- verlangt offenbar Naehe und Blickrichtung: kurz direkt auf das Objekt zugehen, das dreht die Figur hin.
+            local now = os.clock()
+            activeWalk.approachUntil = now + navRoute.APPROACH_SECONDS
+            activeWalk.routed = false
+            activeWalk.points, activeWalk.pointIndex = { menuInfo.interactPoint(activeWalk.actor) }, 1
+            activeWalk.detourAngle, activeWalk.detourIndex, activeWalk.detourSeconds = 0, 0, WALK_DETOUR_SECONDS
+            activeWalk.detourAnnounced = true
+            activeWalk.probeAt, activeWalk.probeLocation = now + WALK_PROBE_SECONDS, { X = location.X, Y = location.Y }
+            activeWalk.bestRemaining, activeWalk.bestAt = math.huge, now
+            log("Ankunft ohne Reichweite, gehe direkt heran")
+            return
+        end
         local pawn, actor = activeWalk.pawn, activeWalk.actor
         if navRoute.journey and not navRoute.chain then
             navRoute.journey.arrivedPath, navRoute.journey.arrivedLevel = selectedTargetPath, navGrid.level
