@@ -1656,6 +1656,7 @@ local mapNames = {}
 menuInfo.NAME_TABLES = {
     ST_CharaName = "/Game/Datatable/Strings/CharaName/ST_CharaName.ST_CharaName",
     ST_UnitName = "/Game/Datatable/Strings/ST_Unit/ST_UnitName.ST_UnitName",
+    ST_SubEv_Moburizu_CountDown = "/Game/Datatable/Strings/Event/SubEvent/SubEv_Chapter02/ST_SubEv_Moburizu_CountDown.ST_SubEv_Moburizu_CountDown",
 }
 -- Spielfiguren und ??? sprechen mit, sind aber nie die angesprochene Person.
 menuInfo.PARTY_NAME_REFS = { "ST_CharaName:CharaName0001", "ST_CharaName:CharaName0002", "ST_CharaName:CharaName0003", "ST_CharaName:CharaName0004" }
@@ -1763,7 +1764,15 @@ local function isSelectable(actor)
     local stateOk, state = pcall(function()
         return actor.m_GimmickCondition
     end)
-    return not (stateOk and state == GIMMICK_STATE_DEACTIVE)
+    if stateOk and state == GIMMICK_STATE_DEACTIVE then
+        return false
+    end
+    -- Rufschalter eines ausgeschalteten Aufzugs bieten keine Aktion an (Werft 07.11.: Figur stand davor, nichts ging).
+    local liftOk, liftState = pcall(function()
+        local lift = actor.m_pElevator
+        return lift and lift:IsValid() and lift.m_GimmickCondition
+    end)
+    return not (liftOk and liftState == GIMMICK_STATE_DEACTIVE)
 end
 
 local function callFunction(object, functionName)
@@ -2250,7 +2259,36 @@ function menuInfo.displayLabel(label, actor, objectType)
     local word = interactType and menuInfo.actionWord(objectType or 2, interactType)
     word = word or menuInfo.ACTION_FALLBACK[label] or label
     local kind = objectType ~= 1 and menuInfo.objectKind(actor)
-    return kind and (word .. ", " .. kind) or word
+    local inscription = actor and menuInfo.inscription(actor)
+    if kind and inscription then
+        kind = kind .. ", Aufschrift " .. inscription
+    end
+    -- Art zuerst, dann was man damit tun kann (Wunsch User 08.11.): "Schalter, Untersuchen".
+    return kind and (kind .. ", " .. word) or word
+end
+
+-- Aufschriften, die ein sehender Spieler am Objekt liest, das Spiel aber nur in der Rueckfrage nennt
+-- (Werft, Fluchtraetsel: "Den Hebel mit der Aufschrift „12“ betaetigen?"). Zuordnung Hebel -> Ereignis aus
+-- Dng_04Dir_41_02_GD (Switch_A..E_Choice), Ereignis -> Text aus DT_Moburizu_CountDown; B = „12“ im Spiel bestaetigt.
+-- Die Zahl hinten ist der Rueckfall, falls die Texttabelle noch nicht geladen ist.
+menuInfo.INSCRIPTIONS = {
+    ["Dng_04Dir_41_02_GD:PersistentLevel.BP_MapGimmick_Switch_SkeletalMesh_C_2"] = { "ST_SubEv_Moburizu_CountDown:SubEv_Moburizu_CountDown_001", "10" },
+    ["Dng_04Dir_41_02_GD:PersistentLevel.BP_MapGimmick_Switch_SkeletalMesh_C_4"] = { "ST_SubEv_Moburizu_CountDown:SubEv_Moburizu_CountDown_002", "12" },
+    ["Dng_04Dir_41_02_GD:PersistentLevel.BP_MapGimmick_Switch_SkeletalMesh_C_5"] = { "ST_SubEv_Moburizu_CountDown:SubEv_Moburizu_CountDown_003", "14" },
+    ["Dng_04Dir_41_02_GD:PersistentLevel.BP_MapGimmick_Switch_SkeletalMesh_C_3"] = { "ST_SubEv_Moburizu_CountDown:SubEv_Moburizu_CountDown_004", "16" },
+    ["Dng_04Dir_41_02_GD:PersistentLevel.BP_MapGimmick_Switch_SkeletalMesh_C_6"] = { "ST_SubEv_Moburizu_CountDown:SubEv_Moburizu_CountDown_005", "18" },
+}
+
+function menuInfo.inscription(actor)
+    local path = objectPath(actor) or ""
+    for suffix, entry in pairs(menuInfo.INSCRIPTIONS) do
+        if path:sub(-#suffix) == suffix then
+            local text = menuInfo.gameText(entry[1])
+            local quoted = text and text ~= entry[1] and (text:match("„(.-)“") or text:match('"(.-)"') or text:match("(%d+)"))
+            return quoted or entry[2]
+        end
+    end
+    return nil
 end
 
 local function targetLabel(actor, source, info, path)
@@ -2315,6 +2353,7 @@ local function questTargetKeys()
     -- Objekt-IDs gelten je Karte: Der Punkt zaehlt nur auf seiner Zielkarte (DestinationKey), sonst nennt die
     -- Ansage die Zielkarte.
     menuInfo.questElsewhere = nil
+    menuInfo.questElsewhereIds = {}
     local questOk, questError = pcall(withCurrentQuest, function(quest)
         local currentGroup = menuInfo.mapGroup(menuInfo.defaultObject("CPP_BFL_Map"):GetCurrentMapId())
         quest.DestinationList:ForEach(function(_, element)
@@ -2329,6 +2368,7 @@ local function questTargetKeys()
                 addKey(point.Object)
             elseif isMap and not onThisMap then
                 menuInfo.questElsewhere = mapNameById(mapId)
+                menuInfo.questElsewhereIds[mapId] = true
             end
         end)
     end)
@@ -2527,12 +2567,52 @@ scanTargets = function(categoryName, origin)
     -- Ist auf dieser Karte nichts markiert, fuehren meist die aktiven Story-Ereignisse weiter.
     if questKeys and #targets == 0 then
         log("Questziel: nichts markiert, nehme Story-Ereignisse")
-        return scanTargets("Story-Ereignisse", origin)
+        local events = scanTargets("Story-Ereignisse", origin)
+        if #events > 0 then
+            return events
+        end
+        -- Liegt das Ziel der verfolgten Quest auf einer anderen Karte: Ausgang mit den wenigsten Kartenwechseln
+        -- dorthin (Kartennetz), von Karte zu Karte neu (Wunsch User 08.11.: Weg fuer jede Quest mit Zwischenhalten).
+        local away = menuInfo.questAwayTargets(origin)
+        if #away > 0 then
+            return away
+        end
+        -- Auch keine Ereignisse mehr: im Dungeon fuehrt der Ausgang in den naechsten Teil weiter (Werft 21:26,
+        -- nach dem Speicherpunkt war die Liste leer, weiter ging es ueber den Ausgang nach 3061).
+        return menuInfo.deeperExits(origin)
     end
     table.sort(targets, function(a, b)
         return a.distance < b.distance
     end)
     return targets
+end
+
+-- Ausgaenge in einen anderen Teil desselben Orts (gleiche Kartengruppe oder gleicher Kartenname), ohne
+-- Spruenge innerhalb der Karte und ohne Weltkarte. Kein Merken, woher die Figur kam: nur Spielzustand.
+function menuInfo.deeperExits(origin)
+    local result = {}
+    local currentOk, current = pcall(function()
+        return menuInfo.defaultObject("CPP_BFL_Map"):GetCurrentMapId()
+    end)
+    if not currentOk or type(current) ~= "number" then
+        return result
+    end
+    local group, name = menuInfo.mapGroup(current), mapNameById(current)
+    for _, target in ipairs(scanTargets("Ausgänge", origin)) do
+        local sameOk, sameMap = pcall(function()
+            return target.actor.m_IsSameMapTrasition
+        end)
+        local mapOk, mapId = pcall(menuInfo.exitTargetMap, target.actor)
+        if not (sameOk and sameMap == true) and mapOk and type(mapId) == "number" and mapId > 0 and mapId ~= current
+                and (menuInfo.mapGroup(mapId) == group or (name and mapNameById(mapId) == name)) then
+            log("Questziel: Ausgang in den naechsten Teil, Karte " .. mapId .. " " .. target.path)
+            result[#result + 1] = target
+        end
+    end
+    if #result == 0 then
+        log("Questziel: auch kein Ausgang in einen anderen Teil")
+    end
+    return result
 end
 
 -- Kartennetz aus den Spieldaten (research\extract\build_kartennetz.py): je Zeile Karte und Zielkarte eines
@@ -2628,6 +2708,73 @@ function menuInfo.requestDestinations()
     return destinations
 end
 
+-- Benutzbare Ausgaenge dieser Karte mit den wenigsten Kartenwechseln bis zur Zielkarte (Kartennetz).
+function menuInfo.exitsToward(goalMap)
+    local steps = menuInfo.mapSteps(goalMap)
+    local best, bestSteps = {}, math.huge
+    for _, trigger in ipairs(FindAllOf("CPP_MapTransitionTrigger") or {}) do
+        if trigger:IsValid() and isExitUsable(trigger) then
+            local mapOk, mapId = pcall(menuInfo.exitTargetMap, trigger)
+            local count = mapOk and not menuInfo.isSameMap(trigger, mapId) and steps[mapId]
+            if count and count < bestSteps then
+                best, bestSteps = { trigger }, count
+            elseif count and count == bestSteps then
+                table.insert(best, trigger)
+            end
+        end
+    end
+    return best, bestSteps
+end
+
+-- Questziel ausserhalb dieser Karte: Ausgaenge Richtung Zielkarte der verfolgten Quest (DestinationList) oder der
+-- Zielkarten der Hauptgeschichte. Bei mehreren Zielkarten gewinnt die mit den wenigsten Wechseln.
+function menuInfo.questAwayTargets(origin)
+    local result, seen = {}, {}
+    local goals = {}
+    for mapId in pairs(menuInfo.questElsewhereIds or {}) do
+        goals[mapId] = true
+    end
+    for mapId in pairs(menuInfo.questMaps or {}) do
+        goals[mapId] = true
+    end
+    local bestSteps = math.huge
+    local candidates = {}
+    for mapId in pairs(goals) do
+        local exits, steps = menuInfo.exitsToward(mapId)
+        log("Questziel Karte " .. tostring(mapId) .. " " .. tostring(mapNameById(mapId)) .. ": " .. #exits
+            .. " Ausgaenge, " .. tostring(steps) .. " Wechsel")
+        if #exits > 0 and steps <= bestSteps then
+            if steps < bestSteps then
+                candidates = {}
+            end
+            bestSteps = steps
+            table.insert(candidates, { mapId = mapId, exits = exits })
+        end
+    end
+    for _, candidate in ipairs(candidates) do
+        local goalName = mapNameById(candidate.mapId)
+        for _, trigger in ipairs(candidate.exits) do
+            local path = objectPath(trigger)
+            if not seen[path] then
+                seen[path] = true
+                local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("Ausgang", trigger, 3)
+                local location = menuInfo.interactPoint(trigger)
+                table.insert(result, {
+                    actor = trigger,
+                    path = path,
+                    label = (goalName and goalName ~= name) and (name .. ", Ziel: " .. goalName) or name,
+                    location = { X = location.X, Y = location.Y, Z = location.Z },
+                    distance = distance2D(location, origin),
+                })
+            end
+        end
+    end
+    table.sort(result, function(a, b)
+        return a.distance < b.distance
+    end)
+    return result
+end
+
 -- Kategorie Auftraege: Ziele auf dieser Karte direkt, sonst der Ausgang, der am schnellsten zur Zielkarte fuehrt.
 function menuInfo.requestTargets(origin)
     local byPath, targets = {}, {}
@@ -2690,24 +2837,12 @@ function menuInfo.requestTargets(origin)
         end
     end
     for _, destination in ipairs(away) do
-        local steps = menuInfo.mapSteps(destination.mapId)
-        local best, bestSteps = {}, math.huge
-        for _, trigger in ipairs(FindAllOf("CPP_MapTransitionTrigger") or {}) do
-            if trigger:IsValid() and isExitUsable(trigger) then
-                local mapOk, mapId = pcall(menuInfo.exitTargetMap, trigger)
-                local count = mapOk and not menuInfo.isSameMap(trigger, mapId) and steps[mapId]
-                if count and count < bestSteps then
-                    best, bestSteps = { trigger }, count
-                elseif count and count == bestSteps then
-                    table.insert(best, trigger)
-                end
-            end
-        end
         local goalName = mapNameById(destination.mapId)
-        if #best == 0 then
+        local exits = menuInfo.exitsToward(destination.mapId)
+        if #exits == 0 then
             log("Auftrag ohne Ausgang: " .. destination.name .. ", Karte " .. tostring(destination.mapId))
         end
-        for _, trigger in ipairs(best) do
+        for _, trigger in ipairs(exits) do
             local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("Ausgang", trigger, 3)
             local label = name .. ", " .. destination.name
             if goalName and goalName ~= name then
@@ -4177,28 +4312,107 @@ function menuInfo.interactPoint(actor)
     return ok and at or actor:K2_GetActorLocation()
 end
 
--- Liegt ein Ziel auf anderer Hoehe ohne bekannten Weg, fuehrt meist ein Aufzug hin: den naechsten erreichbaren nennen.
+-- Schalter, der noch ausgeschaltete Objekte einschaltet (Werft: Hebel oben schaltet den unteren Aufzug ein).
+function menuInfo.switchesInactive(actor)
+    local found = false
+    pcall(function()
+        actor.m_SwitchGimmickList:ForEach(function(_, element)
+            local gimmick = element:get()
+            if gimmick and gimmick:IsValid() and gimmick.m_GimmickCondition == GIMMICK_STATE_DEACTIVE then
+                found = true
+            end
+        end)
+    end)
+    return found
+end
+
+-- Wo ein Aufzug hinfuehrt: Spline-Punkte auf anderer Hoehe als die Figur und Ankunftspunkte aus m_TransitionDataList.
+function menuInfo.liftEnds(actor, origin)
+    local ends = {}
+    pcall(function()
+        local spline = actor.Spline
+        for index = 0, spline:GetNumberOfSplinePoints() - 1 do
+            local point = spline:GetLocationAtSplinePoint(index, 1)
+            if math.abs(point.Z - origin.Z) >= navRoute.FLOOR_HEIGHT then
+                ends[#ends + 1] = { X = point.X, Y = point.Y, Z = point.Z }
+            end
+        end
+    end)
+    pcall(function()
+        actor.m_TransitionDataList:ForEach(function(_, element)
+            local data = element:get()
+            if data.boolValue then
+                local point = data.pTransitionPoint:K2_GetActorLocation()
+                ends[#ends + 1] = { X = point.X, Y = point.Y, Z = point.Z }
+            end
+        end)
+    end)
+    return ends
+end
+
+function menuInfo.distance3D(a, b)
+    local dx, dy, dz = a.X - b.X, a.Y - b.Y, a.Z - b.Z
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+end
+
+-- Naechster Schritt zu einem Ziel ohne bekannten Weg: erst ein erreichbarer Schalter, der noch etwas Ausgeschaltetes
+-- einschaltet, sonst der Aufzug, dessen anderes Ende dem Ziel am naechsten liegt (plus Weg dorthin).
+function menuInfo.nextStep(pawn, origin, target)
+    local bestSwitch, switchRoute, bestLift, liftRoute, liftScore = nil, nil, nil, nil, nil
+    for _, candidate in ipairs(navRoute.targetsFor("Objekte", origin)) do
+        if candidate.path ~= target.path then
+            local name = objectName(candidate.actor)
+            local isSwitch = name:find("Switch", 1, true) and not name:find("CallSwitch", 1, true)
+                and menuInfo.switchesInactive(candidate.actor)
+            local boxOk, box = pcall(function()
+                return candidate.actor.m_pActiveBoxComponent
+            end)
+            local isLift = name:find("Elevator", 1, true) and boxOk and box and box:IsValid()
+            if isSwitch or isLift then
+                local route = navRoute.find(pawn, origin, candidate.location, false, candidate.actor)
+                if route and not route.partial then
+                    if isSwitch and (not switchRoute or route.length < switchRoute.length) then
+                        bestSwitch, switchRoute = candidate, route
+                    elseif isLift then
+                        local reach = menuInfo.distance3D(candidate.location, target.location)
+                        for _, point in ipairs(menuInfo.liftEnds(candidate.actor, origin)) do
+                            reach = math.min(reach, menuInfo.distance3D(point, target.location))
+                        end
+                        -- Entscheidend ist, wie nah die Fahrt ans Ziel bringt; der bekannte Weg zaehlt nur wenig
+                        -- (Werft 21:20: der Aufzug unter den Fuessen gewann sonst gegen den richtigen, 58 m entfernten).
+                        -- Aufzuege ohne echte Annaeherung (nur hoch und runter) kommen nur in Frage, wenn es nichts anderes gibt.
+                        local progress = reach < menuInfo.distance3D(origin, target.location) * 0.8
+                        local score = reach + route.length * 0.25 + (progress and 0 or 1000000)
+                        log(string.format("Aufzug %s: Weg %.0f, Ende zum Ziel %.0f, naeher %s", candidate.path, route.length,
+                            reach, tostring(progress)))
+                        if not liftScore or score < liftScore then
+                            bestLift, liftRoute, liftScore = candidate, route, score
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if bestSwitch then
+        log("Schalter als Weg: " .. bestSwitch.path)
+        return bestSwitch, switchRoute
+    end
+    if bestLift then
+        log("Aufzug als Weg: " .. bestLift.path)
+    end
+    return bestLift, liftRoute
+end
+
+-- Liegt ein Ziel auf anderer Hoehe ohne bekannten Weg, fuehrt meist ein Aufzug hin, manchmal erst ein Schalter.
 function menuInfo.liftHint(pawn, origin, target)
     if math.abs(target.location.Z - origin.Z) < navRoute.FLOOR_HEIGHT then
         return ""
     end
-    local best, bestRoute = nil, nil
-    for _, lift in ipairs(navRoute.targetsFor("Objekte", origin)) do
-        local ok, box = pcall(function()
-            return lift.actor.m_pActiveBoxComponent
-        end)
-        if ok and box and box:IsValid() and lift.path ~= target.path then
-            local route = navRoute.find(pawn, origin, lift.location, false, lift.actor)
-            if route and not route.partial and (not bestRoute or route.length < bestRoute.length) then
-                best, bestRoute = lift, route
-            end
-        end
-    end
-    if not best then
+    local step, route = menuInfo.nextStep(pawn, origin, target)
+    if not step then
         return ""
     end
-    log("Aufzug als Weg: " .. best.path)
-    return ", weiter über " .. best.label .. ", " .. navRoute.describe(bestRoute)
+    return ", weiter über " .. step.label .. ", " .. navRoute.describe(route)
 end
 
 function navRoute.reached(location, point)
@@ -4637,6 +4851,17 @@ function navRoute.planJourneyLeg(pawn)
         log("Questreise: kein Schritt, Ziel " .. tostring(destination))
         speak("Questreise: hier ist kein nächster Schritt bekannt" .. (destination and (". Ziel: " .. destination) or "") .. ".", true)
         return
+    end
+    -- Ziel auf anderer Ebene ohne Weg: erst zum Schalter oder Aufzug, der dorthin fuehrt (Werft 07.11.).
+    if not target.doorHops and math.abs(target.location.Z - origin.Z) >= navRoute.FLOOR_HEIGHT then
+        local route = navRoute.find(pawn, origin, target.location, false, target.actor)
+        if not route or route.partial then
+            local step = menuInfo.nextStep(pawn, origin, target)
+            if step then
+                log("Questreise: Zwischenschritt fuer " .. target.label)
+                categoryName, target = "Objekte", step
+            end
+        end
     end
     for index, name in ipairs(TARGET_CATEGORIES) do
         if name == categoryName then
@@ -5193,7 +5418,11 @@ local function beginBattle()
     battleActive, enemiesAnnounced = true, false
     resultAnnounced, resultSummary, resultTextSpoken = false, nil, nil
     battleUnitStates = {}
-    log("Kampf beginnt")
+    -- Kampf beendet jede Navigation, auch die Questreise; danach startet man selbst neu (Wunsch User 08.11.).
+    local wasNavigating = activeWalk or navRoute.chain or navRoute.journey
+    navRoute.chain, navRoute.journey = nil, nil
+    endWalk()
+    log("Kampf beginnt" .. (wasNavigating and ", Navigation gestoppt" or ""))
     speak("Kampf beginnt.", false)
 end
 
