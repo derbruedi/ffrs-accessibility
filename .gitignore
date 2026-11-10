@@ -9,6 +9,7 @@ research/dumps/
 research/screens/
 research/extract/out/
 research/extract/out_full/
+research/extract/out_nav/
 research/extract/src/
 *.usmap
 oodle-data-shared.dll

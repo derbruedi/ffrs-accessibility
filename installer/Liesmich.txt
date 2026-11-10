@@ -64,7 +64,11 @@ Sonstiges:
   Ende                        Aktuelles Questziel vorlesen
   G                           Gil vorlesen (in Gesprächen öffnet G das
                               Gesprächslog des Spiels)
+  H                           Im Kampf: HP aller Gegner vorlesen
   Strg+R                      Aktuellen Bildschirm noch einmal vorlesen
+  Strg+E                      Zum nächsten Story-Ereignis springen: ein paar
+                              Meter davor, Blick zum Auslöser; hineinlaufen
+                              muss man selbst
   Strg+T                      Wandtöne an/aus (Töne für Wände vorne, links,
                               rechts und hinten)
 

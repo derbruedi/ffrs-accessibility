@@ -2952,6 +2952,10 @@ local navGrid = {
     -- Wie oft ein Punkt ohne Verbindung neu erfasst wird.
     REOPEN_SECONDS = 10,
     reopenAt = {},
+    -- Wie oft die Raender des eigenen Bereichs neu geprueft werden, wenn Ziele nicht erreichbar sind.
+    RECHECK_SECONDS = 30,
+    recheckAt = 0,
+    generation = 0,
     BLOCK_RADIUS = 75,
     OBSTACLE_REACH = 120,
     OBSTACLE_WORDS = {
@@ -3039,6 +3043,20 @@ function navGrid.groundBelow(x, y, top, bottom)
     -- Schloss: Die Treppe beginnt genau bei X -39600 auf dem Raster, eine Linie auf der Modellnaht trifft dort nichts.
     local found = trace(x, y) or trace(x + navGrid.SEAM_OFFSET, y + navGrid.SEAM_OFFSET)
     return found and hit.ImpactPoint.Z or nil, hit
+end
+
+-- Boden unter einer Kugel mit gut halbem Figurradius: findet Boden auch ueber schmalen Fugen, die die Figur
+-- ueberschreitet. Beginnt die Kugel schon in etwas (Wand), gilt das nicht als Boden.
+function navGrid.groundBelowWide(x, y, top, bottom)
+    local hit = {}
+    local color = navGrid.COLOR
+    local radius = math.max(10, navGrid.radius * 0.6)
+    local found = navGrid.system:SphereTraceSingleByProfile(navGrid.pawn, { X = x, Y = y, Z = top },
+        { X = x, Y = y, Z = bottom }, radius, navGrid.profile, false, navGrid.ignored, 0, hit, true, color, color, 0)
+    if not found or hit.bStartPenetrating then
+        return nil, hit
+    end
+    return hit.ImpactPoint.Z, hit
 end
 
 -- Liefert true, wenn die Figur zwischen den beiden Bodenpunkten frei durchpasst.
@@ -3235,17 +3253,33 @@ function navGrid.loadPrebuilt(level)
         return false
     end
     local rows = {}
+    navGrid.liftStops = {}
     for line in file:lines() do
-        local ix, iy, z, a, b, c, d, x, y = line:match("^(%S+) (%S+) (%S+) (%S+) (%S+) (%S+) (%S+) (%S+) (%S+)$")
+        -- Aufzughalte aus den Spieldaten: "A <Level>:<Objekt> <Index> x y z" (Index wie m_CallFloorIndex).
+        local liftKey, stopIndex, stopX, stopY, stopZ = line:match("^A (%S+) (%d+) (%S+) (%S+) (%S+)$")
+        if liftKey then
+            navGrid.liftStops[liftKey] = navGrid.liftStops[liftKey] or {}
+            navGrid.liftStops[liftKey][tonumber(stopIndex) + 1] = { X = tonumber(stopX), Y = tonumber(stopY),
+                Z = tonumber(stopZ) }
+        end
+        -- Karten aus dem Navmesh des Spiels (build_navkarten.py) haben ein zehntes Feld "g": Punkt an einer
+        -- beweglichen Stelle (Sperre, Aufzugtuer, Plattform), der im Spiel live geprueft wird.
+        local ix, iy, z, a, b, c, d, x, y, gate = line:match("^(%S+) (%S+) (%S+) (%S+) (%S+) (%S+) (%S+) (%S+) (%S+) ?(%S*)$")
         if ix then
-            table.insert(rows, { tonumber(ix), tonumber(iy), tonumber(z), { a, b, c, d }, tonumber(x), tonumber(y) })
+            table.insert(rows, { tonumber(ix), tonumber(iy), tonumber(z), { a, b, c, d }, tonumber(x), tonumber(y), gate == "g" })
         end
     end
     file:close()
+    local gates = 0
     for _, row in ipairs(rows) do
         local node = navGrid.addNode(row[1], row[2], row[3])
         node.X, node.Y = row[5], row[6]
+        if row[7] then
+            node.gate = true
+            gates = gates + 1
+        end
     end
+    navGrid.gateCount = gates
     for _, row in ipairs(rows) do
         local node = navGrid.nodes[navGrid.nodeKey(row[1], row[2], row[3])]
         for index, direction in ipairs(navGrid.DIRECTIONS) do
@@ -3263,11 +3297,20 @@ function navGrid.reset(level, useFile)
     navGrid.head, navGrid.tail, navGrid.count, navGrid.complete, navGrid.scanStarted = 1, 0, 0, false, nil
     navGrid.blockLogs = 0
     navGrid.reopenAt = {}
+    navGrid.liftStops = nil
+    navGrid.generation = navGrid.generation + 1
+    navGrid.gateLogCount = 0
     navGrid.prebuilt = useFile and navGrid.loadPrebuilt(level)
     if navGrid.prebuilt then
         navGrid.fromFile, navGrid.complete, navGrid.announceFinish = false, true, false
         navGrid.scannedThisSession[level] = true
-        log("Wegekarte " .. level .. ": fertige Karte, " .. navGrid.count .. " Punkte")
+        navGrid.gateCache = {}
+        local lifts = 0
+        for _ in pairs(navGrid.liftStops or {}) do
+            lifts = lifts + 1
+        end
+        log("Wegekarte " .. level .. ": fertige Karte, " .. navGrid.count .. " Punkte, " .. tostring(navGrid.gateCount)
+            .. " bewegliche, " .. lifts .. " Aufzuege")
         return
     end
     navGrid.fromFile = useFile and navGrid.load(level)
@@ -3344,6 +3387,46 @@ function navGrid.isIsolated(node)
     return true
 end
 
+-- Windschrein 09.11.: Oben am Aufzug C_0 wurde nur die Plattform erfasst, der Durchgang zu Aufzug C_7 galt als zu
+-- (vermutlich noch geschlossen, waehrend der Aufzug ankam). Gesperrte Kanten des Bereichs um die Figur daher erneut
+-- pruefen, wenn Ziele nicht erreichbar sind; neue Durchgaenge wachsen dann normal weiter.
+function navGrid.recheckBorders(start)
+    local now = os.clock()
+    if not start or now < navGrid.recheckAt then
+        return false
+    end
+    navGrid.recheckAt = now + navGrid.RECHECK_SECONDS
+    local seen, queue, head, reopened = { [start.key] = true }, { start }, 1, 0
+    while queue[head] do
+        local node = queue[head]
+        head = head + 1
+        local border = false
+        for index = 1, #navGrid.DIRECTIONS do
+            local link = node.links[index]
+            if link == false then
+                node.links[index] = nil
+                border = true
+            elseif link and not seen[link.key] then
+                seen[link.key] = true
+                queue[#queue + 1] = link
+            end
+        end
+        if border then
+            navGrid.push(node)
+            reopened = reopened + 1
+        end
+    end
+    if reopened == 0 then
+        return false
+    end
+    navGrid.complete = false
+    navGrid.blockLogs = 0
+    navGrid.scanStarted = os.clock()
+    log(string.format("Wegekarte: pruefe %d Randpunkte von %d um %.0f %.0f %.0f neu", reopened, #queue, start.X, start.Y,
+        start.Z))
+    return true
+end
+
 function navGrid.removeNode(node)
     navGrid.nodes[node.key] = nil
     navGrid.count = navGrid.count - 1
@@ -3360,6 +3443,7 @@ function navGrid.finishScan()
     navGrid.scannedThisSession[navGrid.level] = true
     log(string.format("Wegekarte fertig: %d Punkte, %.1f s", navGrid.count, os.clock() - (navGrid.scanStarted or os.clock())))
     navGrid.scanStarted = nil
+    navGrid.generation = navGrid.generation + 1
     navGrid.save()
     -- Spaetere Ergaenzungen, etwa nach einem Abstecher neben das Raster, laufen still.
     if navGrid.announceFinish then
@@ -3537,14 +3621,81 @@ function navGrid.toggleWalls()
 end
 
 -- Erreichbarkeit ab einem Punkt: fuer jeden Knoten der Vorgaenger auf dem kuerzesten Weg.
-function navGrid.flood(start)
+-- Punkte an beweglichen Stellen (Sperren, Aufzugtueren, Plattformen) gelten nur, wenn dort gerade Boden ist und
+-- die Figur durchpasst. Das Ergebnis gilt kurz, Tore und Aufzuege aendern sich.
+navGrid.GATE_SECONDS = 4
+navGrid.gateCache = {}
+function navGrid.gateOpen(from, node)
+    if not node.gate then
+        return true
+    end
+    if navGrid.disabled or not navGrid.pawn or not navGrid.system then
+        return true
+    end
+    local key = from.key .. ">" .. node.key
+    local now = os.clock()
+    local cached = navGrid.gateCache[key]
+    if cached and now < cached.expires then
+        return cached.open
+    end
+    local reason = nil
+    local ok, open = pcall(function()
+        local ground, groundHit = navGrid.groundBelow(node.X, node.Y, node.Z + 120, node.Z - 120)
+        -- Windschrein 10.11.: Tor-Punkte auf der Fuge zwischen Absatz und Aufzugkabine, der Strahl fiel durch die Ritze
+        -- ("kein Boden"). Die Figur ist breiter als so ein Spalt, daher mit einer Kugel nachpruefen.
+        if not ground then
+            ground, groundHit = navGrid.groundBelowWide(node.X, node.Y, node.Z + 120, node.Z - 120)
+        end
+        if not ground then
+            reason = "kein Boden"
+            return false
+        end
+        if math.abs(ground - node.Z) > 60 then
+            reason = string.format("Boden bei %.0f", ground) .. " " .. navGrid.componentNames(groundHit.Component:Get())
+            return false
+        end
+        local fromGround = navGrid.groundBelow(from.X, from.Y, from.Z + 120, from.Z - 120) or from.Z
+        local free, hit = navGrid.sweepFree(from.X, from.Y, fromGround, node.X, node.Y, ground)
+        if not free then
+            reason = "Hindernis " .. navGrid.componentNames(hit.Component:Get())
+        end
+        return free
+    end)
+    if not ok then
+        reason = "Fehler " .. tostring(open)
+    end
+    open = ok and open == true
+    -- Diagnose (Windschrein 10.11.: eine Reihe Tor-Punkte schloss die Figur auf 40 Punkte ein, Grund unbekannt).
+    if not open then
+        navGrid.gateLogs = navGrid.gateLogs or {}
+        local logKey = navGrid.generation .. ":" .. node.key
+        if not navGrid.gateLogs[logKey] and (navGrid.gateLogCount or 0) < 150 then
+            navGrid.gateLogs[logKey] = true
+            navGrid.gateLogCount = (navGrid.gateLogCount or 0) + 1
+            log(string.format("Tor zu bei %.0f %.0f %.0f (von %.0f %.0f %.0f): %s", node.X, node.Y, node.Z, from.X, from.Y,
+                from.Z, tostring(reason)))
+        end
+    end
+    navGrid.gateCache[key] = { open = open, expires = now + navGrid.GATE_SECONDS }
+    return open
+end
+
+-- openNear: Punkt, um den bewegliche Stellen als offen gelten (Ankunft einer Aufzugfahrt: Die Kabine steht dann dort,
+-- auch wenn sie gerade woanders ist. Windschrein 10.11.: Halt ohne Kabine schloss den Bereich auf einen Punkt ein).
+navGrid.ASSUME_OPEN_RADIUS = 450
+navGrid.ASSUME_OPEN_HEIGHT = 250
+function navGrid.flood(start, openNear)
     local previous, queue, head = { [start] = start }, { start }, 1
+    local function assumedOpen(node)
+        return openNear and node.gate and distance2D(node, openNear) <= navGrid.ASSUME_OPEN_RADIUS
+            and math.abs(node.Z - openNear.Z) <= navGrid.ASSUME_OPEN_HEIGHT
+    end
     while queue[head] do
         local node = queue[head]
         head = head + 1
         for index = 1, #navGrid.DIRECTIONS do
             local link = node.links[index]
-            if link and not previous[link] then
+            if link and not previous[link] and (assumedOpen(link) or navGrid.gateOpen(node, link)) then
                 previous[link] = node
                 queue[#queue + 1] = link
             end
@@ -3571,7 +3722,13 @@ function navGrid.goalInsideBounds(previous, destination, actor)
     return best
 end
 
-function navGrid.chooseGoal(previous, destination, actor)
+-- Wie chooseGoal, aber ohne Teilweg: nil, wenn das Ziel in diesem Bereich nicht liegt (schnell, fuer viele Bereiche).
+function navGrid.goalIn(previous, destination, actor)
+    local goal, partial = navGrid.chooseGoal(previous, destination, actor, true)
+    return not partial and goal or nil
+end
+
+function navGrid.chooseGoal(previous, destination, actor, noPartial)
     local baseX, baseY = navGrid.cellOf(destination.X), navGrid.cellOf(destination.Y)
     local range = navGrid.GOAL_CELLS
     local best, bestScore = nil, math.huge
@@ -3589,11 +3746,16 @@ function navGrid.chooseGoal(previous, destination, actor)
     if best then
         return best, false
     end
-    if actor then
+    -- Aufzuege nicht: ihre Bounds umfassen den ganzen Schacht, ein Punkt auf einer Zwischenebene ist nicht die
+    -- Plattform (Windschrein 08.11.: Aufzug C_3 21 m tiefer galt als erreichbar).
+    if actor and not objectName(actor):find("Elevator", 1, true) then
         local ok, inside = pcall(navGrid.goalInsideBounds, previous, destination, actor)
         if ok and inside then
             return inside, false
         end
+    end
+    if noPartial then
+        return nil, true
     end
     for node in pairs(previous) do
         local score = distance2D(destination, node) + math.abs(node.Z - destination.Z) * 0.5
@@ -3611,7 +3773,8 @@ function navGrid.lineFree(from, to)
     local function step(dx, dy)
         for index, direction in ipairs(navGrid.DIRECTIONS) do
             if direction[1] == dx and direction[2] == dy then
-                return current.links[index] or nil
+                local link = current.links[index]
+                return link and navGrid.gateOpen(current, link) and link or nil
             end
         end
         return nil
@@ -3984,20 +4147,22 @@ end
 
 -- Zeigt nur, was von der aktuellen Position aus wirklich erreichbar ist. Solange die Wegekarte
 -- unfertig ist, laesst sich das nicht sagen, dann bleibt die Liste vollstaendig.
-function navRoute.filterReachable(pawn, origin, targets, categoryName)
+-- keepAll: nichts ausblenden, Ziele ohne bekannten Weg nur ans Ende stellen (Wunsch User 09.11.: alles auf der
+-- Karte soll in den Kategorien stehen, nicht nur das gerade Erreichbare).
+function navRoute.filterReachable(pawn, origin, targets, categoryName, keepAll)
     local start = navGrid.complete and navGrid.nearest(origin)
     if not start then
         return targets
     end
     -- Bild hoch/runter fragt dieselbe Liste erneut ab: Auf der Weltkarte kostete die Pruefung 0,1 s je Ziel
     -- (05.11., 5 s je Schritt). Das Urteil gilt, solange Kategorie, Karte und Startpunkt gleich bleiben.
-    local cacheKey = categoryName .. "|" .. tostring(navGrid.level) .. "|" .. tostring(start)
+    local cacheKey = categoryName .. "|" .. tostring(navGrid.level) .. "|" .. tostring(start) .. "|" .. navGrid.generation
     if not navRoute.reachCache or navRoute.reachCache.key ~= cacheKey then
         navRoute.reachCache = { key = cacheKey, verdicts = {} }
     end
     local verdicts = navRoute.reachCache.verdicts
     local previous = nil
-    local reachable, hidden = {}, 0
+    local reachable, hidden, hiddenSameLevel, unreachable = {}, 0, false, {}
     for _, target in ipairs(targets) do
         local verdict = verdicts[target.path]
         if not verdict then
@@ -4017,6 +4182,10 @@ function navRoute.filterReachable(pawn, origin, targets, categoryName)
                     verdict.keep = true
                 end
             end
+            -- Ueber Aufzuege erreichbar zaehlt als erreichbar (Weg ist bekannt, nur in Abschnitten).
+            if not verdict.keep and navRoute.liftPlan(pawn, origin, target) then
+                verdict.keep = true
+            end
             verdicts[target.path] = verdict
         end
         local keep = verdict.keep
@@ -4030,7 +4199,11 @@ function navRoute.filterReachable(pawn, origin, targets, categoryName)
             table.insert(reachable, target)
         else
             hidden = hidden + 1
+            if target.location and math.abs(target.location.Z - start.Z) < navRoute.FLOOR_HEIGHT then
+                hiddenSameLevel = true
+            end
             log("Nicht erreichbar: " .. target.label .. " " .. target.path)
+            table.insert(unreachable, target)
         end
     end
     -- Eine gespeicherte Karte kann veraltet sein: einmal je Sitzung neu erfassen statt Ziele falsch auszublenden.
@@ -4038,6 +4211,16 @@ function navRoute.filterReachable(pawn, origin, targets, categoryName)
         log("Wegekarte: Ziele nicht erreichbar, erfasse die Karte neu")
         navGrid.reset(navGrid.level, false)
         return targets
+    end
+    -- Sonst die Raender des eigenen Bereichs neu pruefen, wenn etwas auf gleicher Hoehe fehlt. Das laeuft im
+    -- Hintergrund; der naechste Tastendruck nutzt die ergaenzte Karte.
+    if hiddenSameLevel and not navGrid.prebuilt then
+        navGrid.recheckBorders(start)
+    end
+    if keepAll then
+        for _, target in ipairs(unreachable) do
+            table.insert(reachable, target)
+        end
     end
     return reachable
 end
@@ -4355,10 +4538,515 @@ function menuInfo.distance3D(a, b)
     return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
 
+-- Naechster Punkt eines Ziels mit Bereich (Windschrein 08.11.: Ausgang C_3 reicht von Z 8000 bis 16000, die Mitte
+-- auf 120 m liess jeden Aufzug gleich schlecht aussehen).
+function menuInfo.nearestInBounds(actor, point, fallback)
+    local ok, nearest = pcall(function()
+        local origin, extent = {}, {}
+        actor:GetActorBounds(false, origin, extent, false)
+        local function clamp(value, center, half)
+            return math.max(center - half, math.min(center + half, value))
+        end
+        return { X = clamp(point.X, origin.X, extent.X), Y = clamp(point.Y, origin.Y, extent.Y),
+            Z = clamp(point.Z, origin.Z, extent.Z) }
+    end)
+    return ok and nearest or fallback
+end
+
+-- Ein Weg zu einem Aufzug zaehlt nur, wenn er auf der Hoehe der Plattform endet. Die Bounds des Aufzugs
+-- umfassen den ganzen Schacht (Windschrein 08.11.: Plattform 21 m tiefer, Weg galt trotzdem als vollstaendig).
+function menuInfo.routeEndsAt(route, location)
+    local last = route and route.points and route.points[#route.points]
+    return last ~= nil and math.abs(last.Z - location.Z) < navRoute.FLOOR_HEIGHT
+end
+
+-- Aufzugnetz (Wunsch User 10.11.: Die Mod muss alle Wege kennen und richtig fuehren). Die fertigen Karten bestehen
+-- aus Ebenen, die nur Aufzuege verbinden (Windschrein: 9 Aufzuege, alle Ebenen darueber verbunden). Die Halte stehen
+-- als A-Zeilen in der Kartendatei (Spieldaten). Gesucht wird wie auf einem Plan: der Bereich ab der Figur, jeder
+-- Halt darin fuehrt zu den anderen Halten dieses Aufzugs, von dort der naechste Bereich. Steht die Plattform
+-- woanders, braucht es den Rufschalter dieses Halts (m_CallFloorIndex). Nur die erste Aktion wird ausgefuehrt,
+-- nach der Fahrt plant tickLiftChain neu.
+navRoute.LIFT_STOP_RADIUS = 350
+navRoute.LIFT_STOP_HEIGHT = 150
+navRoute.LIFT_RIDE_COST = 500
+navRoute.LIFT_JUMP_DISTANCE = 3000
+navRoute.LIFT_CALL_COST = 1500
+navRoute.LIFT_ABSENT_COST = 5000
+navRoute.LIFT_CACHE_SECONDS = 3
+navRoute.LIFT_MAX_AREAS = 40
+navRoute.LIFT_SETTLE_SECONDS = 1.5
+navRoute.LIFT_CHAIN_SECONDS = 300
+
+function navGrid.nodeNear(point, previous, radius, height)
+    local range = math.ceil(radius / navGrid.CELL)
+    local baseX, baseY = navGrid.cellOf(point.X), navGrid.cellOf(point.Y)
+    local best, bestDistance = nil, math.huge
+    for ix = baseX - range, baseX + range do
+        for iy = baseY - range, baseY + range do
+            for _, node in ipairs(navGrid.cells[ix .. ":" .. iy] or {}) do
+                if (not previous or previous[node]) and math.abs(node.Z - point.Z) <= height then
+                    local distance = distance2D(point, node)
+                    if distance <= radius and distance < bestDistance then
+                        best, bestDistance = node, distance
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+function navGrid.floodLength(previous, node)
+    local length, guard = 0, 0
+    while previous[node] and previous[node] ~= node and guard < 100000 do
+        length = length + distance2D(node, previous[node])
+        node, guard = previous[node], guard + 1
+    end
+    return length
+end
+
+function navRoute.liftKey(actor)
+    local level, name = (objectPath(actor) or ""):match("([%w_]+):PersistentLevel%.([%w_]+)$")
+    return level and (level .. ":" .. name) or nil
+end
+
+-- Wo die Plattform gerade ist: das Modell faehrt, ob die Wurzel mitfaehrt, ist nicht belegt.
+function menuInfo.liftPlatform(actor)
+    local ok, at = pcall(function()
+        local mesh = actor.m_pStaticMeshComponent
+        return mesh and mesh:IsValid() and mesh:K2_GetComponentLocation()
+    end)
+    return ok and at or actor:K2_GetActorLocation()
+end
+
+function navRoute.nearestStop(stops, point)
+    local best, bestDistance = nil, math.huge
+    for index, stop in ipairs(stops) do
+        local distance = menuInfo.distance3D(stop, point)
+        if distance < bestDistance then
+            best, bestDistance = index, distance
+        end
+    end
+    return best, bestDistance
+end
+
+-- Diagnose (Windschrein 10.11.: zweiter Aufzug oben abgesperrt, kein Boden am Eingang, kein Rufschalter): Zustand
+-- aller Aufzuege in der Naehe und ihrer Sperren, einmal je Karte.
+navRoute.LIFT_DIAGNOSE_RADIUS = 4000
+function navRoute.liftDiagnose(origin)
+    if navRoute.liftDiagnosed == navGrid.generation then
+        return
+    end
+    navRoute.liftDiagnosed = navGrid.generation
+    local function field(object, name)
+        local ok, value = pcall(function()
+            return object[name]
+        end)
+        if not ok then
+            return "?"
+        end
+        if type(value) == "userdata" then
+            local textOk, text = pcall(function()
+                return value:ToString()
+            end)
+            if textOk and type(text) == "string" then
+                return '"' .. text .. '"'
+            end
+        end
+        return tostring(value)
+    end
+    local function collision(component)
+        local ok, value = pcall(function()
+            return component:IsValid() and component:GetCollisionEnabled()
+        end)
+        return ok and tostring(value) or "?"
+    end
+    local function location(component)
+        local ok, at = pcall(function()
+            return component:K2_GetComponentLocation()
+        end)
+        return ok and at and string.format("%.0f %.0f %.0f", at.X, at.Y, at.Z) or "?"
+    end
+    for _, lift in ipairs(FindAllOf("CPP_MapGimmick") or {}) do
+        local nearOk, near = pcall(function()
+            return lift:IsValid() and objectName(lift):find("Elevator_Interact", 1, true)
+                and menuInfo.distance3D(lift:K2_GetActorLocation(), origin) <= navRoute.LIFT_DIAGNOSE_RADIUS
+        end)
+        if nearOk and near then
+            local parts = { objectName(lift) }
+            pcall(function()
+                local at = lift:K2_GetActorLocation()
+                parts[#parts + 1] = string.format("Akteur %.0f %.0f %.0f", at.X, at.Y, at.Z)
+            end)
+            pcall(function()
+                local mesh = lift.m_pStaticMeshComponent
+                parts[#parts + 1] = "Kabine " .. location(mesh) .. ", Kollision " .. collision(mesh)
+                    .. ", sichtbar " .. tostring(mesh:IsVisible())
+            end)
+            for _, name in ipairs({ "m_GimmickCondition", "VisibleCondition", "m_FlagCondition", "bHidden",
+                "m_DefaultCollisionEnabled" }) do
+                parts[#parts + 1] = name .. "=" .. field(lift, name)
+            end
+            pcall(function()
+                parts[#parts + 1] = string.format("Fahrt Anteil %s Start %s", tostring(lift.m_TransitionData.Ratio),
+                    tostring(lift.m_TransitionData.m_IsStartPoint))
+            end)
+            pcall(function()
+                parts[#parts + 1] = "Ruf aktiv " .. tostring(lift:GetActorEnableCollision())
+            end)
+            pcall(function()
+                local events = {}
+                lift.m_EventList:ForEach(function(_, element)
+                    local event = element:get()
+                    events[#events + 1] = tostring(event.EventId and event.EventId:ToString()) .. " ["
+                        .. tostring(event.Condition and event.Condition:ToString()) .. "]"
+                end)
+                parts[#parts + 1] = "Ereignisse " .. #events .. " " .. table.concat(events, ", ")
+            end)
+            log("Aufzug Diagnose: " .. table.concat(parts, ", "))
+            pcall(function()
+                lift.m_BlockingBoxDataList:ForEach(function(floorIndex, floorElement)
+                    floorElement:get().blokingBoxDataList:ForEach(function(_, boxElement)
+                        local data = boxElement:get()
+                        local box = data.pBlockingBox
+                        local info = { "Halt " .. tostring(floorIndex) }
+                        if box and box:IsValid() then
+                            info[#info + 1] = objectName(box)
+                            info[#info + 1] = "Akteurkollision " .. tostring(box:GetActorEnableCollision())
+                            info[#info + 1] = "versteckt " .. field(box, "bHidden")
+                            info[#info + 1] = "Zustand " .. field(box, "m_GimmickCondition")
+                            info[#info + 1] = "Bedingung " .. field(box, "VisibleCondition") .. "/" .. field(box, "m_FlagCondition")
+                            pcall(function()
+                                info[#info + 1] = "Kasten " .. collision(box.m_pRootBoxComponent)
+                            end)
+                            pcall(function()
+                                info[#info + 1] = "Modell " .. collision(box.m_pMeshComponent)
+                            end)
+                        else
+                            info[#info + 1] = "ohne Objekt"
+                        end
+                        info[#info + 1] = string.format("Vorgabe hier %s sonst %s (ueberschrieben %s)",
+                            tostring(data.isThisFloorCollisionEnabled), tostring(data.isNotThisFloorCollisionEnabled),
+                            tostring(data.bOverride_IsCollisionEnabled))
+                        log("  Aufzugsperre: " .. table.concat(info, ", "))
+                    end)
+                end)
+            end)
+        end
+    end
+end
+
+-- Aufzuege der Karte mit ihren Halten, dem Halt der Plattform und den Rufschaltern je Halt.
+function navRoute.liftList(origin)
+    pcall(navRoute.liftDiagnose, origin)
+    local lifts, byKey = {}, {}
+    if not navGrid.liftStops then
+        return lifts
+    end
+    local candidates = navRoute.targetsFor("Objekte", origin)
+    for _, candidate in ipairs(candidates) do
+        local key = navRoute.liftKey(candidate.actor)
+        local stops = key and navGrid.liftStops[key]
+        if stops and #stops >= 2 then
+            local ok, active = pcall(function()
+                return candidate.actor.m_GimmickCondition ~= GIMMICK_STATE_DEACTIVE
+            end)
+            if ok and active then
+                local lift = { candidate = candidate, actor = candidate.actor, key = key, stops = stops, switches = {} }
+                lift.platform = menuInfo.liftPlatform(candidate.actor)
+                lift.current = navRoute.nearestStop(stops, lift.platform)
+                lifts[#lifts + 1] = lift
+                byKey[key] = lift
+            end
+        end
+    end
+    for _, candidate in ipairs(candidates) do
+        if objectName(candidate.actor):find("CallSwitch", 1, true) then
+            pcall(function()
+                local elevator = candidate.actor.m_pElevator
+                local lift = elevator and elevator:IsValid() and byKey[navRoute.liftKey(elevator)]
+                if not lift then
+                    return
+                end
+                local index = candidate.actor.m_CallFloorIndex
+                index = type(index) == "number" and lift.stops[index + 1] and index + 1
+                    or navRoute.nearestStop(lift.stops, candidate.location)
+                lift.switches[index] = candidate
+            end)
+        end
+    end
+    return lifts
+end
+
+-- Uebergaenge innerhalb der Karte mit Wegepunkt am Ziel und Ausloesebereich (Windschrein 10.11.: Der Weg zum
+-- Story-Ziel fuehrt mit dem Aufzug am Eingang hinunter in einen Uebergang, der auf eine andere Ebene versetzt).
+function navRoute.jumpList()
+    local jumps = {}
+    for _, link in ipairs(navRoute.doorLinks()) do
+        if link.destination then
+            local ok, origin, extent = pcall(function()
+                local origin, extent = {}, {}
+                link.actor:GetActorBounds(false, origin, extent, false)
+                return origin, extent
+            end)
+            jumps[#jumps + 1] = {
+                link = link,
+                arrival = navGrid.nodeNear(link.destination, nil, navRoute.LIFT_STOP_RADIUS, navRoute.LIFT_STOP_HEIGHT),
+                origin = ok and origin or nil,
+                extent = ok and extent or nil,
+                candidate = { actor = link.actor, path = link.path, location = link.location,
+                    label = menuInfo.displayLabel("Ausgang", link.actor, 3) },
+            }
+        end
+    end
+    return jumps
+end
+
+function navRoute.jumpLink(actor)
+    for _, link in ipairs(navRoute.doorLinks()) do
+        if link.actor == actor or link.path == objectPath(actor) then
+            return link
+        end
+    end
+    return nil
+end
+
+-- Uebergang, in dessen Ausloesebereich ein Punkt liegt (etwas Spielraum, der Haltepunkt liegt am Boden des Schachts).
+function navRoute.jumpAt(jumps, point)
+    for _, jump in ipairs(jumps) do
+        local origin, extent = jump.origin, jump.extent
+        if jump.arrival and origin and math.abs(point.X - origin.X) <= extent.X + 100
+            and math.abs(point.Y - origin.Y) <= extent.Y + 100 and math.abs(point.Z - origin.Z) <= extent.Z + 200 then
+            return jump
+        end
+    end
+    return nil
+end
+
+-- Alle Bereiche, die sich ab der Figur ueber Aufzuege erreichen lassen, in der Reihenfolge ihrer Kosten.
+function navRoute.liftExplore(origin)
+    local start = navGrid.complete and navGrid.liftStops and navGrid.nearest(origin)
+    if not start then
+        return nil
+    end
+    local now = os.clock()
+    local cache = navRoute.liftCache
+    if cache and cache.start == start and cache.generation == navGrid.generation and now < cache.expires then
+        return cache.areas
+    end
+    local lifts = navRoute.liftList(origin)
+    local jumps = navRoute.jumpList()
+    local areas, open = {}, { { node = start, cost = 0, rides = 0 } }
+    local function covered(node)
+        for _, area in ipairs(areas) do
+            if area.previous[node] then
+                return true
+            end
+        end
+        return false
+    end
+    while #open > 0 and #areas < navRoute.LIFT_MAX_AREAS do
+        local bestIndex = 1
+        for index = 2, #open do
+            if open[index].cost < open[bestIndex].cost then
+                bestIndex = index
+            end
+        end
+        local entry = table.remove(open, bestIndex)
+        if not covered(entry.node) then
+            entry.previous = navGrid.flood(entry.node, entry.openNear)
+            areas[#areas + 1] = entry
+            -- Spruenge innerhalb der Karte, deren Ausloeser zu Fuss erreichbar ist.
+            for _, jump in ipairs(jumps) do
+                local trigger = jump.arrival and navGrid.goalIn(entry.previous, jump.link.location, jump.link.actor)
+                if trigger and not covered(jump.arrival) then
+                    open[#open + 1] = {
+                        node = jump.arrival,
+                        how = (entry.how or "") .. " > " .. objectName(jump.link.actor),
+                        rides = entry.rides + 1,
+                        cost = entry.cost + navGrid.floodLength(entry.previous, trigger) + navRoute.LIFT_RIDE_COST,
+                        first = entry.first or { candidate = jump.candidate, jump = true },
+                    }
+                end
+            end
+            for _, lift in ipairs(lifts) do
+                for from, stop in ipairs(lift.stops) do
+                    local board = navGrid.nodeNear(stop, entry.previous, navRoute.LIFT_STOP_RADIUS, navRoute.LIFT_STOP_HEIGHT)
+                    local action = nil
+                    if board and lift.current == from then
+                        action = { candidate = lift.candidate, node = board, extra = 0 }
+                    elseif board and lift.switches[from] then
+                        local switch = lift.switches[from]
+                        local switchNode = navGrid.goalIn(entry.previous, switch.location, switch.actor)
+                        if switchNode then
+                            action = { candidate = switch, node = switchNode, extra = navRoute.LIFT_CALL_COST, call = true }
+                        end
+                    end
+                    -- Halt ohne Rufschalter, Plattform woanders (Windschrein: 6 Halte ohne Schalter). Der Weg bleibt
+                    -- bekannt, nur teurer; gelaufen wird zum Halt, nicht zur Plattform.
+                    if board and not action then
+                        local candidate = {}
+                        for field, value in pairs(lift.candidate) do
+                            candidate[field] = value
+                        end
+                        candidate.location = { X = stop.X, Y = stop.Y, Z = stop.Z }
+                        action = { candidate = candidate, node = board, extra = navRoute.LIFT_ABSENT_COST, absent = true }
+                    end
+                    if action then
+                        local walk = navGrid.floodLength(entry.previous, action.node)
+                        for to, arrival in ipairs(lift.stops) do
+                            local node = to ~= from and navGrid.nodeNear(arrival, nil, navRoute.LIFT_STOP_RADIUS,
+                                navRoute.LIFT_STOP_HEIGHT)
+                            -- Halt ohne Boden, der in einem Uebergang liegt: Die Fahrt endet am Zielpunkt des Sprungs.
+                            if to ~= from and not node then
+                                local jump = navRoute.jumpAt(jumps, arrival)
+                                node = jump and jump.arrival
+                            end
+                            if node and not covered(node) then
+                                open[#open + 1] = {
+                                    node = node,
+                                    openNear = arrival,
+                                    how = (entry.how or "") .. string.format(" > %s %d-%d",
+                                        lift.key:match("_C_%d+$") or lift.key, from, to),
+                                    rides = entry.rides + 1,
+                                    cost = entry.cost + walk + action.extra + navRoute.LIFT_RIDE_COST
+                                        + menuInfo.distance3D(stop, arrival),
+                                    first = entry.first or { candidate = action.candidate, call = action.call, lift = lift,
+                                        from = from, to = to, absent = action.absent },
+                                }
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    local parts = {}
+    for _, jump in ipairs(jumps) do
+        parts[#parts + 1] = string.format("Sprung %s -> %.0f %.0f %.0f%s", objectName(jump.link.actor), jump.link.destination.X,
+            jump.link.destination.Y, jump.link.destination.Z, jump.arrival and "" or " ohne Wegepunkt")
+    end
+    for _, lift in ipairs(lifts) do
+        local switches = {}
+        for index in pairs(lift.switches) do
+            switches[#switches + 1] = tostring(index)
+        end
+        parts[#parts + 1] = string.format("%s Halt %d/%d (Z %.0f, Ruf %s)", lift.key:match("_C_%d+$") or lift.key,
+            lift.current or 0, #lift.stops, lift.platform.Z, table.concat(switches, ","))
+    end
+    log(string.format("Aufzugnetz: %d Bereiche, %s", #areas, table.concat(parts, "; ")))
+    -- Diagnose: welche Bereiche ueber welche Fahrten erreicht wurden (Windschrein 10.11.: offline 10 Bereiche bis zum
+    -- Ziel, im Spiel nur 5).
+    local list = {}
+    for _, area in ipairs(areas) do
+        local count = 0
+        for _ in pairs(area.previous) do
+            count = count + 1
+        end
+        list[#list + 1] = string.format("%d Punkte bei %.0f %.0f %.0f%s", count, area.node.X, area.node.Y, area.node.Z,
+            area.how or " Start")
+    end
+    log("Aufzugbereiche: " .. table.concat(list, " | "))
+    navRoute.liftCache = { start = start, generation = navGrid.generation, expires = now + navRoute.LIFT_CACHE_SECONDS,
+        areas = areas }
+    return areas
+end
+
+-- Weg zu einem Ziel ueber Aufzuege: erste Aktion (Aufzug oder Rufschalter) und Zahl der Fahrten.
+function navRoute.liftPlan(pawn, origin, target)
+    if not navGrid.liftStops or not target or not target.location then
+        return nil
+    end
+    local ok, areas = pcall(navRoute.liftExplore, origin)
+    if not ok then
+        log("Aufzugnetz fehlgeschlagen: " .. tostring(areas))
+        return nil
+    end
+    for _, area in ipairs(areas or {}) do
+        if area.first and navGrid.goalIn(area.previous, target.location, target.actor) then
+            return { first = area.first, rides = area.rides }
+        end
+    end
+    return nil
+end
+
+function navRoute.liftText(plan)
+    local first = plan.first
+    if first.jump then
+        return string.format("über %s, zuerst %s", plan.rides == 1 and "einen Übergang" or (plan.rides .. " Fahrten und Übergänge"),
+            first.candidate.label)
+    end
+    local up = first.lift.stops[first.to].Z > first.lift.stops[first.from].Z
+    return string.format("über %s, zuerst %s%s", plan.rides == 1 and "einen Aufzug" or (plan.rides .. " Aufzüge"),
+        first.candidate.label, first.call and ", holt den Aufzug"
+            or ((up and ", nach oben" or ", nach unten") .. (first.absent and ", Plattform ist gerade nicht hier" or "")))
+end
+
+-- Nach der Fahrt (oder wenn ein gerufener Aufzug angekommen ist) den naechsten Abschnitt starten.
+function navRoute.tickLiftChain()
+    local chain = navRoute.liftChain
+    if not chain or activeWalk or navRoute.chain then
+        return
+    end
+    if chain.path ~= selectedTargetPath then
+        navRoute.liftChain = nil
+        return
+    end
+    local pawn = playerUnit()
+    if not pawn or pawn.m_IsEnableUnitInput == false then
+        chain.calmSince = nil
+        return
+    end
+    local now = os.clock()
+    local here = pawn:K2_GetActorLocation()
+    local platformOk, platform = pcall(menuInfo.liftPlatform, chain.lift)
+    local platformZ = platformOk and platform and platform.Z or 0
+    if not chain.baseZ then
+        chain.baseZ, chain.basePlatformZ, chain.deadline = here.Z, platformZ, now + navRoute.LIFT_CHAIN_SECONDS
+        chain.baseLocation = { X = here.X, Y = here.Y }
+        return
+    end
+    if now > chain.deadline then
+        navRoute.liftChain = nil
+        log("Aufzugweg: Frist abgelaufen")
+        return
+    end
+    -- Gefahren: die Figur steht an einem anderen Halt dieses Aufzugs. Gerufen: die Plattform ist umgezogen.
+    local stop, stopDistance = navRoute.nearestStop(chain.stops, here)
+    local rode = stop ~= chain.from and stopDistance < navRoute.LIFT_STOP_RADIUS * 2
+        and math.abs(here.Z - chain.baseZ) >= navRoute.FLOOR_HEIGHT
+    -- Fahrt endete in einem Uebergang (Windschrein, Aufzug am Eingang): die Figur steht ganz woanders.
+    rode = rode or distance2D(here, chain.baseLocation) > navRoute.LIFT_JUMP_DISTANCE
+    local called = chain.call and math.abs(platformZ - chain.basePlatformZ) >= navRoute.FLOOR_HEIGHT
+    if not rode and not called then
+        chain.calmSince = nil
+        return
+    end
+    local signature = math.floor(here.Z / 50) .. ":" .. math.floor(platformZ / 50)
+    if signature ~= chain.signature or not chain.calmSince then
+        chain.signature, chain.calmSince = signature, now
+        return
+    end
+    if now - chain.calmSince < navRoute.LIFT_SETTLE_SECONDS then
+        return
+    end
+    navRoute.liftChain = nil
+    log("Aufzugweg: " .. (rode and "Fahrt beendet" or "Aufzug angekommen") .. ", weiter zu " .. chain.label)
+    navRoute.startWalk()
+end
+
 -- Naechster Schritt zu einem Ziel ohne bekannten Weg: erst ein erreichbarer Schalter, der noch etwas Ausgeschaltetes
--- einschaltet, sonst der Aufzug, dessen anderes Ende dem Ziel am naechsten liegt (plus Weg dorthin).
+-- einschaltet, sonst der Aufzug, dessen anderes Ende dem Ziel am naechsten liegt (plus Weg dorthin). Steht die
+-- Plattform auf einer anderen Ebene, ist der Rufschalter auf dieser Ebene der Schritt.
 function menuInfo.nextStep(pawn, origin, target)
+    local plan = navRoute.liftPlan(pawn, origin, target)
+    if plan then
+        local step = plan.first.candidate
+        log("Aufzugnetz: Schritt " .. step.path .. ", " .. plan.rides .. " Fahrten")
+        return step, navRoute.find(pawn, origin, step.location, false, step.actor)
+    end
     local bestSwitch, switchRoute, bestLift, liftRoute, liftScore = nil, nil, nil, nil, nil
+    local goal = menuInfo.nearestInBounds(target.actor, origin, target.location)
     for _, candidate in ipairs(navRoute.targetsFor("Objekte", origin)) do
         if candidate.path ~= target.path then
             local name = objectName(candidate.actor)
@@ -4367,25 +5055,53 @@ function menuInfo.nextStep(pawn, origin, target)
             local boxOk, box = pcall(function()
                 return candidate.actor.m_pActiveBoxComponent
             end)
-            local isLift = name:find("Elevator", 1, true) and boxOk and box and box:IsValid()
-            if isSwitch or isLift then
+            local lift = nil
+            if name:find("Elevator", 1, true) and boxOk and box and box:IsValid() then
+                -- Ob die Plattform auf dieser Ebene steht, prueft routeEndsAt unten.
+                lift = candidate.actor
+            elseif name:find("CallSwitch", 1, true) then
+                -- Plattform woanders: dann fuehrt der Rufschalter hin, nicht der Aufzug selbst.
+                local liftOk, called = pcall(function()
+                    local elevator = candidate.actor.m_pElevator
+                    return elevator and elevator:IsValid() and elevator
+                end)
+                if liftOk and called then
+                    local platform = menuInfo.interactPoint(called)
+                    if math.abs(platform.Z - candidate.location.Z) >= navRoute.FLOOR_HEIGHT then
+                        lift = called
+                    end
+                end
+            end
+            if isSwitch or lift then
                 local route = navRoute.find(pawn, origin, candidate.location, false, candidate.actor)
+                if route and not route.partial and not menuInfo.routeEndsAt(route, candidate.location) then
+                    log(string.format("Weg zu %s endet auf anderer Ebene, zaehlt nicht", candidate.path))
+                    route = nil
+                end
                 if route and not route.partial then
                     if isSwitch and (not switchRoute or route.length < switchRoute.length) then
                         bestSwitch, switchRoute = candidate, route
-                    elseif isLift then
-                        local reach = menuInfo.distance3D(candidate.location, target.location)
-                        for _, point in ipairs(menuInfo.liftEnds(candidate.actor, origin)) do
-                            reach = math.min(reach, menuInfo.distance3D(point, target.location))
+                    elseif lift then
+                        local reach = menuInfo.distance3D(menuInfo.interactPoint(lift), goal)
+                        for _, point in ipairs(menuInfo.liftEnds(lift, origin)) do
+                            reach = math.min(reach, menuInfo.distance3D(point, goal))
                         end
                         -- Entscheidend ist, wie nah die Fahrt ans Ziel bringt; der bekannte Weg zaehlt nur wenig
                         -- (Werft 21:20: der Aufzug unter den Fuessen gewann sonst gegen den richtigen, 58 m entfernten).
                         -- Aufzuege ohne echte Annaeherung (nur hoch und runter) kommen nur in Frage, wenn es nichts anderes gibt.
-                        local progress = reach < menuInfo.distance3D(origin, target.location) * 0.8
+                        local progress = reach < menuInfo.distance3D(origin, goal) * 0.8
                         local score = reach + route.length * 0.25 + (progress and 0 or 1000000)
                         log(string.format("Aufzug %s: Weg %.0f, Ende zum Ziel %.0f, naeher %s", candidate.path, route.length,
                             reach, tostring(progress)))
-                        if not liftScore or score < liftScore then
+                        -- Windschrein 09.11.: Oben angekommen schickte die Questreise immer wieder in denselben
+                        -- Aufzug zurueck. Einen Aufzug ohne Annaeherung, mit dem man gerade gefahren ist, nicht erneut.
+                        local last = menuInfo.lastPlainLift
+                        if not progress and last and last.path == candidate.path
+                            and math.abs(origin.Z - last.z) >= navRoute.FLOOR_HEIGHT then
+                            log("Aufzug gerade gefahren, nicht zurueck: " .. candidate.path)
+                            score = nil
+                        end
+                        if score and (not liftScore or score < liftScore) then
                             bestLift, liftRoute, liftScore = candidate, route, score
                         end
                     end
@@ -4399,12 +5115,21 @@ function menuInfo.nextStep(pawn, origin, target)
     end
     if bestLift then
         log("Aufzug als Weg: " .. bestLift.path)
+        -- Windschrein 10.11.: Unten zaehlte die Fahrt als Annaeherung und wurde nicht gemerkt, oben schickte die
+        -- Questreise dann sofort wieder hinunter. Jede Fahrt merken, zurueck geht es nur mit echter Annaeherung.
+        menuInfo.lastPlainLift = { path = bestLift.path, z = origin.Z }
     end
     return bestLift, liftRoute
 end
 
 -- Liegt ein Ziel auf anderer Hoehe ohne bekannten Weg, fuehrt meist ein Aufzug hin, manchmal erst ein Schalter.
 function menuInfo.liftHint(pawn, origin, target)
+    local plan = navRoute.liftPlan(pawn, origin, target)
+    if plan then
+        local step = plan.first.candidate
+        return ", " .. navRoute.liftText(plan) .. ", "
+            .. navRoute.describe(navRoute.find(pawn, origin, step.location, false, step.actor))
+    end
     if math.abs(target.location.Z - origin.Z) < navRoute.FLOOR_HEIGHT then
         return ""
     end
@@ -4653,7 +5378,7 @@ local function selectTarget(steps)
     local allTargets = navRoute.targetsFor(categoryName, origin)
     local targets = navRoute.exitTargets(categoryName, allTargets)
     if categoryName ~= "Erkunden" then
-        targets = navRoute.filterReachable(pawn, origin, targets, categoryName)
+        targets = navRoute.filterReachable(pawn, origin, targets, categoryName, true)
     end
     if #targets == 0 then
         selectedTargetPath = nil
@@ -4729,8 +5454,12 @@ function navRoute.startWalk()
     end
     local startedAt = os.clock()
     local route = navRoute.find(pawn, origin, target.location, false, target.actor)
-    local goalLabel, hops = target.label, nil
-    navRoute.chain = nil
+    local goalLabel, hops, liftPlan = target.label, nil, nil
+    navRoute.chain, navRoute.liftChain = nil, nil
+    -- Ein neuer Abschnitt ersetzt eine anstehende Neuplanung der Questreise (sonst liefe er doppelt an).
+    if navRoute.journey then
+        navRoute.journey.pending = false
+    end
     -- Das Ziel liegt in einem anderen Raum: erst zum ersten Uebergang, tickChain laeuft danach weiter.
     if not route or route.partial then
         local hop = navRoute.doorPath(pawn, origin, target.location)
@@ -4740,6 +5469,24 @@ function navRoute.startWalk()
             log(string.format("Tuerweg zu %s: %d Uebergaenge, zuerst %s", goalLabel, hops, tostring(link.path)))
             navRoute.chain = { path = selectedTargetPath, expected = link.destination }
             target = { actor = link.actor, label = menuInfo.displayLabel("Ausgang", link.actor, 3), location = link.location, distance = distance2D(origin, link.location) }
+            route = navRoute.find(pawn, origin, target.location, false, target.actor)
+        end
+    end
+    -- Ziel auf einer anderen Ebene: zum ersten Aufzug (oder seinem Rufschalter), tickLiftChain plant nach der Fahrt neu.
+    if (not route or route.partial) and not hops then
+        liftPlan = navRoute.liftPlan(pawn, origin, target)
+        if liftPlan then
+            local step = liftPlan.first.candidate
+            log(string.format("Aufzugweg zu %s: %d Fahrten, zuerst %s", goalLabel, liftPlan.rides, step.path))
+            if liftPlan.first.jump then
+                -- Erst ein Sprung innerhalb der Karte: danach wie beim Tuerweg am Zielpunkt neu ansetzen.
+                local link = navRoute.jumpLink(step.actor)
+                navRoute.chain = { path = selectedTargetPath, expected = link and link.destination }
+            else
+                navRoute.liftChain = { path = selectedTargetPath, label = goalLabel, lift = liftPlan.first.lift.actor,
+                    stops = liftPlan.first.lift.stops, from = liftPlan.first.from, call = liftPlan.first.call }
+            end
+            target = step
             route = navRoute.find(pawn, origin, target.location, false, target.actor)
         end
     end
@@ -4779,6 +5526,8 @@ function navRoute.startWalk()
     }
     if hops then
         speak("Laufe zu " .. goalLabel .. ", " .. navRoute.hopsText(hops) .. ".", true)
+    elseif liftPlan then
+        speak("Laufe zu " .. goalLabel .. ", " .. navRoute.liftText(liftPlan) .. ", " .. navRoute.describe(route) .. ".", true)
     elseif route then
         speak("Laufe zu " .. target.label .. ", " .. navRoute.describe(route) .. ".", true)
     else
@@ -4795,6 +5544,102 @@ function navRoute.startJourney(questIds)
         questIds = questIds }
     log("Questreise gestartet")
     speak("Questreise gestartet.", true)
+end
+
+-- Strg+E (Wunsch User 10.11.): an das naechste Story-Ereignis heranspringen, ein paar Meter davor, Blick zum
+-- Ausloeser. Ausgeloest wird nichts, hineinlaufen muss man selbst. Ziel ist ein Punkt der Wegekarte, nicht der
+-- Ausloeser selbst (der liegt oft hoch in der Luft oder in der Wand).
+navRoute.EVENT_JUMP_DISTANCE = 400
+navRoute.EVENT_JUMP_SEARCH = 3000
+function navRoute.eventJumpPoint(target)
+    local all = {}
+    for _, node in pairs(navGrid.nodes or {}) do
+        all[node] = true
+    end
+    local goal = navGrid.chooseGoal(all, target.location, target.actor, true)
+    if not goal then
+        return nil
+    end
+    local origin, extent = nil, nil
+    pcall(function()
+        local o, e = {}, {}
+        target.actor:GetActorBounds(false, o, e, false)
+        origin, extent = o, e
+    end)
+    local function inside(node)
+        return origin and math.abs(node.X - origin.X) <= extent.X + 50 and math.abs(node.Y - origin.Y) <= extent.Y + 50
+            and math.abs(node.Z - origin.Z) <= extent.Z + 200
+    end
+    -- Breitensuche ab dem Zielpunkt: der erste feste Punkt ausserhalb des Ausloesers in gut 4 m Abstand,
+    -- sonst der entfernteste feste Punkt bis dorthin.
+    local seen, queue, head = { [goal] = true }, { goal }, 1
+    local best, bestDistance = goal, -1
+    while queue[head] and head <= navRoute.EVENT_JUMP_SEARCH do
+        local node = queue[head]
+        head = head + 1
+        local distance = distance2D(node, goal)
+        if not node.gate and not inside(node) and distance >= navRoute.EVENT_JUMP_DISTANCE then
+            return node, goal
+        end
+        if not node.gate and distance <= navRoute.EVENT_JUMP_DISTANCE and distance > bestDistance then
+            best, bestDistance = node, distance
+        end
+        for _, link in ipairs(node.links) do
+            if link and not seen[link] then
+                seen[link] = true
+                queue[#queue + 1] = link
+            end
+        end
+    end
+    return best, goal
+end
+
+function navRoute.walkToNextEvent()
+    local pawn, controller = playerUnit()
+    if not pawn then
+        speak("Hier nicht verfügbar.", true)
+        return
+    end
+    if not navGrid.prebuilt then
+        speak("Für diese Karte gibt es keine Wegekarte, Sprung nicht möglich.", true)
+        return
+    end
+    if navRoute.journey then
+        navRoute.journey = nil
+        log("Questreise beendet durch Ereignistaste")
+    end
+    endWalk()
+    local origin = pawn:K2_GetActorLocation()
+    local targets = navRoute.targetsFor("Story-Ereignisse", origin)
+    if #targets == 0 then
+        log("Ereignissprung: kein Story-Ereignis")
+        speak("Kein Story-Ereignis auf dieser Karte.", true)
+        return
+    end
+    for _, target in ipairs(targets) do
+        local point, goal = navRoute.eventJumpPoint(target)
+        if point then
+            local destination = { X = point.X, Y = point.Y, Z = point.Z + navGrid.halfHeight + 20 }
+            local yaw = math.deg(math.atan(goal.Y - point.Y, goal.X - point.X))
+            local ok, moved = pcall(function()
+                return pawn:K2_TeleportTo(destination, { Pitch = 0, Yaw = yaw, Roll = 0 })
+            end)
+            log(string.format("Ereignissprung zu %s: von %.0f %.0f %.0f nach %.0f %.0f %.0f, Ziel %.0f %.0f %.0f, %s %s",
+                target.path, origin.X, origin.Y, origin.Z, destination.X, destination.Y, destination.Z, goal.X, goal.Y,
+                goal.Z, tostring(ok), tostring(moved)))
+            if ok and moved ~= false then
+                pcall(function()
+                    controller:SetControlRotation({ Pitch = 0, Yaw = yaw, Roll = 0 })
+                end)
+                speak(string.format("Gesprungen, %s %.0f Meter vor dir.", target.label,
+                    distance2D(point, goal) / 100), true)
+                return
+            end
+        else
+            log("Ereignissprung: kein Punkt der Wegekarte bei " .. target.path)
+        end
+    end
+    speak("Sprung zum Story-Ereignis nicht möglich.", true)
 end
 
 function navRoute.journeyPick(pawn, origin, categoryName, accept)
@@ -4855,7 +5700,8 @@ function navRoute.planJourneyLeg(pawn)
     -- Ziel auf anderer Ebene ohne Weg: erst zum Schalter oder Aufzug, der dorthin fuehrt (Werft 07.11.).
     if not target.doorHops and math.abs(target.location.Z - origin.Z) >= navRoute.FLOOR_HEIGHT then
         local route = navRoute.find(pawn, origin, target.location, false, target.actor)
-        if not route or route.partial then
+        -- Mit bekanntem Aufzugweg fuehrt startWalk selbst Abschnitt fuer Abschnitt hin.
+        if (not route or route.partial) and not navRoute.liftPlan(pawn, origin, target) then
             local step = menuInfo.nextStep(pawn, origin, target)
             if step then
                 log("Questreise: Zwischenschritt fuer " .. target.label)
@@ -4905,7 +5751,7 @@ end
 
 local function toggleWalk()
     if activeWalk then
-        navRoute.chain = nil
+        navRoute.chain, navRoute.liftChain = nil, nil
         endWalk(navRoute.journey and "Laufen abgebrochen, Questreise beendet." or "Laufen abgebrochen.")
         navRoute.journey = nil
         return
@@ -5309,6 +6155,38 @@ local function describeBattleTarget(unit)
     return string.format("%s, %d von %d HP", name, unit.hitPoints, callFunction(unit.parameter, "GetMaxHitPoint") or 0)
 end
 
+-- Taste H (Wunsch User 10.11.): HP aller Gegner im Kampf, auch ohne Analyse.
+function menuInfo.readEnemyHitPoints()
+    if not battleActive then
+        speak("Kein Kampf.", true)
+        return
+    end
+    local enemies = {}
+    for _, unit in ipairs(readBattleUnits()) do
+        if isEnemyUnit(unit) and unit.hitPoints > 0 then
+            enemies[#enemies + 1] = unit
+        end
+    end
+    table.sort(enemies, function(a, b)
+        return (tonumber(a.id) or 0) < (tonumber(b.id) or 0)
+    end)
+    if #enemies == 0 then
+        speak("Keine Gegner mehr.", true)
+        return
+    end
+    local parts = {}
+    for _, unit in ipairs(enemies) do
+        local maximum = callFunction(unit.parameter, "GetMaxHitPoint")
+        if type(maximum) == "number" and maximum > 0 then
+            parts[#parts + 1] = string.format("%s, %d von %d HP", battleUnitName(unit), unit.hitPoints, maximum)
+        else
+            parts[#parts + 1] = string.format("%s, %d HP", battleUnitName(unit), unit.hitPoints)
+        end
+    end
+    log("Gegner-HP: " .. table.concat(parts, "; "))
+    speak(table.concat(parts, "; "), true)
+end
+
 local function findActivated(className)
     for _, screen in ipairs(FindAllOf(className) or {}) do
         if screen:IsValid() and screen:IsActivated() then
@@ -5419,8 +6297,8 @@ local function beginBattle()
     resultAnnounced, resultSummary, resultTextSpoken = false, nil, nil
     battleUnitStates = {}
     -- Kampf beendet jede Navigation, auch die Questreise; danach startet man selbst neu (Wunsch User 08.11.).
-    local wasNavigating = activeWalk or navRoute.chain or navRoute.journey
-    navRoute.chain, navRoute.journey = nil, nil
+    local wasNavigating = activeWalk or navRoute.chain or navRoute.journey or navRoute.liftChain
+    navRoute.chain, navRoute.journey, navRoute.liftChain = nil, nil, nil
     endWalk()
     log("Kampf beginnt" .. (wasNavigating and ", Navigation gestoppt" or ""))
     speak("Kampf beginnt.", false)
@@ -5781,6 +6659,7 @@ menuInfo.guardedEquipFigure = guarded("Figuren-Abfrage", menuInfo.tickEquipFigur
 menuInfo.guardedWorldMap = guarded("Weltkarten-Abfrage", menuInfo.tickWorldMap)
 navRoute.guardedChain = guarded("Tuerweg", navRoute.tickChain)
 navRoute.guardedJourney = guarded("Questreise", navRoute.tickJourney)
+navRoute.guardedLiftChain = guarded("Aufzugweg", navRoute.tickLiftChain)
 navGrid.guardedWalls = guarded("Wandtoene", navGrid.tickWalls)
 
 LoopInGameThreadWithDelay(TICK_MS, function()
@@ -5793,6 +6672,7 @@ LoopInGameThreadWithDelay(TICK_MS, function()
     tickWalking()
     navRoute.guardedChain()
     navRoute.guardedJourney()
+    navRoute.guardedLiftChain()
     navGrid.guardedWalls()
     tickBattleStatus()
     navRoute.guardedPrompt()
@@ -5817,6 +6697,16 @@ end)
 
 RegisterKeyBind(Key.END, function()
     ExecuteInGameThread(guarded("Quest vorlesen", readCurrentQuest))
+end)
+
+RegisterKeyBind(Key.E, { ModifierKey.CONTROL }, function()
+    ExecuteInGameThread(guarded("Zum naechsten Ereignis", navRoute.walkToNextEvent))
+end)
+
+RegisterKeyBind(Key.H, function()
+    ExecuteInGameThread(guarded("Gegner-HP vorlesen", function()
+        menuInfo.readEnemyHitPoints()
+    end))
 end)
 
 RegisterKeyBind(Key.G, function()
