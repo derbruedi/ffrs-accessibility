@@ -127,6 +127,43 @@ else if (args[0] == "dumpall")
     }
     Console.WriteLine($"{count} Pakete");
 }
+else if (args[0] == "nav")
+{
+    // Das gebackene Navmesh des Spiels aus den *_NAV-Leveln: nav <datei> <regex>
+    // Zeilen: L level | T x y layer bminX bminY bminZ bmaxX bmaxY bmaxZ | V x y z (Recast-Raum, roh)
+    //         P flags area vertCount v0..v5 n0..n5 | O ax ay az bx by bz radius flags
+    var regex = new Regex(args[2], RegexOptions.IgnoreCase);
+    using var writer = new StreamWriter(Path.Combine(outDir, args[1]));
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    foreach (var key in provider.Files.Keys.Where(k => k.EndsWith(".umap") && regex.IsMatch(k)).OrderBy(k => k))
+    {
+        try
+        {
+            foreach (var chunk in provider.LoadPackage(key).GetExports().OfType<CUE4Parse.UE4.Objects.NavigationSystem.NavMesh.URecastNavMeshDataChunk>())
+            {
+                var navName = chunk.GetOrDefault<FName>("NavigationDataName").Text;
+                writer.WriteLine($"L {key} {navName}");
+                foreach (var tile in chunk.Tiles)
+                {
+                    if (tile.Tile == null) continue;
+                    var h = tile.Tile.Header;
+                    writer.WriteLine(string.Format(inv, "T {0} {1} {2} {3} {4} {5} {6} {7} {8}", h.X, h.Y, h.Layer, h.BMin.X, h.BMin.Y, h.BMin.Z, h.BMax.X, h.BMax.Y, h.BMax.Z));
+                    foreach (var v in tile.Tile.Vertices)
+                        writer.WriteLine(string.Format(inv, "V {0} {1} {2}", v.X, v.Y, v.Z));
+                    foreach (var p in tile.Tile.Polys)
+                        writer.WriteLine($"P {p.Flags} {p.AreaAndType} {p.VertCount} {string.Join(' ', p.Verts)} {string.Join(' ', p.Neis)}");
+                    foreach (var o in tile.Tile.OffMeshConnections)
+                        writer.WriteLine(string.Format(inv, "O {0} {1} {2} {3} {4} {5} {6} {7}", o.Positiona.X, o.Positiona.Y, o.Positiona.Z, o.Positionb.X, o.Positionb.Y, o.Positionb.Z, o.Radius, (int)o.Flags));
+                }
+            }
+            Console.WriteLine($"{key}: gelesen");
+        }
+        catch (Exception error)
+        {
+            Console.WriteLine($"{key}: Fehler {error.Message}");
+        }
+    }
+}
 else if (args[0] == "locres")
 {
     // Die Sprachdatei des Spiels als Tabelle: locres <sprache> <datei>, je Zeile Namensraum, Schluessel, Text.
