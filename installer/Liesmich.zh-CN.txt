@@ -1,0 +1,86 @@
+FINAL FANTASY RESONANCE 无障碍模组
+==================================
+
+这是一个让 FINAL FANTASY RESONANCE 可以通过屏幕阅读器游玩的模组
+（支持 NVDA、JAWS 等，通过 Prism 库朗读）。它会朗读菜单、对话、
+交谈、战斗和结算，并提供寻路功能，可以带角色前往目标。
+
+模组通过 UE4SS 在游戏中运行。它不会修改游戏文件，也不会绕过
+版权保护。
+
+
+安装
+----
+
+1. 关闭游戏。
+2. 启动 FFRSAccess-Setup.exe。
+3. 安装程序会在 Steam 库中查找游戏。焦点位于“游戏文件夹”字段，
+   其中显示找到的文件夹。也可以输入其他文件夹，或按 Alt+B
+   选择文件夹，例如：
+   D:\SteamLibrary\steamapps\common\FINAL FANTASY RESONANCE
+4. 在该字段上方的“语言”下拉框中选择安装程序和模组语言。
+5. 按 Enter 或 Alt+I 安装。完成后会显示消息。
+   所有消息也会显示在“消息”字段中（Alt+M）。
+6. 启动游戏。模组会朗读：
+   “FINAL FANTASY RESONANCE 无障碍模组已加载。”
+
+更新：安装程序启动时会检查 GitHub
+（github.com/derbruedi/ffrs-accessibility）是否有新版本。
+如果有，会询问是否下载并安装。选择“是”后，会下载新的安装程序，
+并安装到“游戏文件夹”字段中的位置。版本号末尾带“b”的是测试版。
+
+音频描述：安装完成后，图形化安装程序会从 GitHub 下载过场动画音频描述，约 400 MB，首次可能需要几分钟。以后只有出现新版本时才会重新下载。没有网络时仍会安装模组，音频描述会在下次运行安装程序时补装。Zip 包中的 Installieren.bat 不下载音频描述。
+
+如果游戏位于“Program Files”下，安装程序会请求管理员权限并重新启动。
+
+也可以不使用 Exe，而使用 Zip 包中的 Installieren.bat：
+   Installieren.bat -GameDir "D:\游戏文件夹" -Language zh-CN
+
+如果已经安装 UE4SS，它的设置和模组列表会保留。更新模组时，
+已学习的名称和已扫描的路径图也会保留。
+
+卸载：在安装程序中按 Alt+E。若也要删除 UE4SS，请先勾选
+“卸载时也删除 UE4SS”（Alt+U）。Zip 包中可使用 Deinstallieren.bat。
+
+
+按键
+----
+
+寻路：
+  Shift+Page Up/Page Down 切换类别（任务目标、剧情事件、人物、敌人、
+                         宝箱、出口、门、存档点、对象、探索）
+  Page Up/Page Down       在当前类别中选择目标
+  Home                    前往目标；再次按 Home 取消
+  在“任务目标”中按 Home  开始或停止任务导航：会一段一段地前往任务目标，
+                         并在场景、战斗和地图切换后自动继续。
+                         到达后由玩家自行按 Enter。
+
+其他：
+  End                     朗读当前任务目标
+  G                       朗读吉尔（对话中按 G 打开游戏对话记录）
+  H                       战斗中朗读所有敌人的 HP
+  Ctrl+R                  重新朗读当前屏幕
+  Ctrl+E                  跳到下一个剧情事件：向前移动几米并面向触发器；
+                         之后需要玩家自己走进去
+  Ctrl+T                  开关墙壁提示音（前方、左侧、右侧、后方的提示音）
+
+游戏在对话中的按键：G 对话记录，R 自动继续，
+1 跳过场景，C 或 Backspace 跳过文本。
+
+
+有问题时
+--------
+
+模组会把日志写入游戏文件夹中的：
+  FFRS\Binaries\Win64\ue4ss\UE4SS.log
+如果某些内容没有被朗读，请附上此日志文件。
+
+
+包含的软件
+----------
+
+UE4SS（RE-UE4SS），MIT 许可证，见 Lizenzen\UE4SS.txt
+Prism 及其组件，见 Lizenzen\prism 文件夹
+音频描述来自 buu420 的模组“Visions of Grandshelt”
+（github.com/buu420/visions-of-grandshelt），GPL-3，未作修改；许可证和来源见
+Descriptions 文件夹中的 LICENSE-GPL3.txt、HERKUNFT.txt

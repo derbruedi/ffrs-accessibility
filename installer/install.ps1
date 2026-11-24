@@ -2,11 +2,15 @@
 # Aufruf ueber Installieren.bat; der Spielordner wird abgefragt oder mit -GameDir uebergeben.
 param(
     [string]$GameDir,
-    [switch]$Uninstall
+    [switch]$Uninstall,
+    [string]$Language = ''
 )
 $ErrorActionPreference = 'Stop'
 $payload = Join-Path $PSScriptRoot 'dateien'
+. (Join-Path $PSScriptRoot 'locale.ps1')
 $exeRelative = 'FFRS\Binaries\Win64\FFRS-Win64-Shipping.exe'
+$localesDir = Join-Path $payload 'Win64\ue4ss\Mods\FFRSAccess\Scripts\locales'
+Use-Language $localesDir $Language
 
 function Write-Step([string]$text) {
     Write-Host $text
@@ -66,56 +70,62 @@ function Resolve-GameDir([string]$path) {
     return $null
 }
 
-Write-Step 'FINAL FANTASY RESONANCE Zugang, Installation.'
+$titleShown = $false
 if (-not $GameDir) {
     $suggestions = @(Find-GameDirs)
     $suggestion = $suggestions | Select-Object -First 1
     if ($suggestion) {
-        Write-Step "Gefundener Spielordner: $suggestion"
+        Write-Step (T 'installer.found' @{ path = $suggestion })
         if ($suggestions.Count -gt 1) {
-            Write-Step ('Weitere gefundene Ordner: ' + (($suggestions | Select-Object -Skip 1) -join '; '))
+            Write-Step (T 'installer.also_found' @{ path = (($suggestions | Select-Object -Skip 1) -join '; ') })
         }
-        $answer = (Ask 'Enter drücken, um diesen Ordner zu nehmen, oder einen anderen Spielordner eingeben')
+        $answer = (Ask (T 'script.choose_found'))
         $GameDir = if ($answer) { $answer } else { $suggestion }
     } else {
-        $GameDir = (Ask 'Kein Spielordner gefunden. Bitte den Spielordner eingeben, zum Beispiel C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY RESONANCE')
+        Write-Step (T 'script.title')
+        $titleShown = $true
+        $GameDir = (Ask (T 'script.enter_game'))
     }
 }
 $game = Resolve-GameDir $GameDir
 if (-not $game) {
-    Write-Step "In diesem Ordner liegt kein FINAL FANTASY RESONANCE: $GameDir"
-    Write-Step "Erwartet wird die Datei $exeRelative darin."
+    Write-Step (T 'installer.game.invalid' @{ file = $exeRelative })
+    Write-Step (T 'script.invalid_path' @{ path = $GameDir })
     exit 1
 }
 $win64 = Join-Path $game 'FFRS\Binaries\Win64'
 $ue4ss = Join-Path $win64 'ue4ss'
 $modDir = Join-Path $ue4ss 'Mods\FFRSAccess'
-Write-Step "Spielordner: $game"
+if (-not $Language -and (Test-Path (Join-Path $modDir 'language.txt'))) {
+    Use-Language $localesDir ([IO.File]::ReadAllText((Join-Path $modDir 'language.txt'), [Text.Encoding]::UTF8).Trim())
+}
+if (-not $titleShown) { Write-Step (T 'script.title') }
+Write-Step (T 'installer.game_path.status' @{ path = $game })
 
 $running = Get-Process -Name 'FFRS-Win64-Shipping' -ErrorAction SilentlyContinue | Where-Object {
     $_.Path -and $_.Path.StartsWith($win64, [System.StringComparison]::OrdinalIgnoreCase)
 }
 if ($running) {
-    Write-Step 'Das Spiel läuft gerade. Bitte das Spiel beenden und den Installer noch einmal starten.'
+    Write-Step (T 'installer.game.running')
     exit 1
 }
 
 if ($Uninstall) {
     if (Test-Path $modDir) {
         Remove-Item $modDir -Recurse -Force
-        Write-Step 'Mod FFRSAccess entfernt.'
+        Write-Step (T 'installer.mod_removed')
     } else {
-        Write-Step 'Mod FFRSAccess war nicht installiert.'
+        Write-Step (T 'installer.mod_not_installed')
     }
-    $answer = (Ask 'Auch UE4SS entfernen? Dann laufen andere UE4SS-Mods ebenfalls nicht mehr. j für ja, Enter für nein')
-    if ($answer.ToLower() -eq 'j') {
+    $answer = (Ask (T 'script.remove_ue4ss_prompt'))
+    if (@('j', 'y') -contains $answer.ToLower()) {
         if (Test-Path (Join-Path $ue4ss 'UE4SS.dll')) {
             Remove-Item (Join-Path $win64 'dwmapi.dll') -Force -ErrorAction SilentlyContinue
             Remove-Item $ue4ss -Recurse -Force
-            Write-Step 'UE4SS entfernt.'
+            Write-Step (T 'installer.ue4ss_removed')
         }
     }
-    Write-Step 'Deinstallation fertig.'
+    Write-Step (T 'installer.uninstall.done')
     exit 0
 }
 
@@ -133,12 +143,19 @@ foreach ($name in 'UE4SS-settings.ini', 'Mods\mods.txt') {
 foreach ($standardMod in Get-ChildItem (Join-Path $payload 'Win64\ue4ss\Mods') -Directory | Where-Object { $_.Name -ne 'FFRSAccess' }) {
     Copy-Item $standardMod.FullName (Join-Path $ue4ss 'Mods') -Recurse -Force
 }
-Write-Step ($(if ($hadUe4ss) { 'UE4SS aktualisiert, Einstellungen behalten.' } else { 'UE4SS installiert.' }))
+Write-Step (T $(if ($hadUe4ss) { 'installer.ue4ss_updated' } else { 'installer.ue4ss_installed' }))
 
 # Mod: Dateien ersetzen, gelernte Namen (npc_names.txt) und gescannte Wegekarten (wege*.txt) bleiben.
 New-Item -ItemType Directory -Force (Join-Path $modDir 'Scripts'), (Join-Path $modDir 'bin') | Out-Null
-Copy-Item (Join-Path $payload 'Win64\ue4ss\Mods\FFRSAccess\Scripts\*') (Join-Path $modDir 'Scripts') -Force
+Copy-Item (Join-Path $payload 'Win64\ue4ss\Mods\FFRSAccess\Scripts\*') (Join-Path $modDir 'Scripts') -Recurse -Force
 Copy-Item (Join-Path $payload 'Win64\ue4ss\Mods\FFRSAccess\bin\*') (Join-Path $modDir 'bin') -Force
+$sounds = Join-Path $payload 'Win64\ue4ss\Mods\FFRSAccess\Sounds'
+if (Test-Path $sounds) {
+    New-Item -ItemType Directory -Force (Join-Path $modDir 'Sounds') | Out-Null
+    Copy-Item (Join-Path $sounds '*') (Join-Path $modDir 'Sounds') -Recurse -Force
+}
 Set-Content -Path (Join-Path $modDir 'enabled.txt') -Value '' -Encoding Ascii
-Write-Step 'Mod FFRSAccess installiert.'
-Write-Step 'Fertig. Beim nächsten Spielstart sagt die Mod: Final Fantasy Resonance Zugang geladen.'
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[IO.File]::WriteAllText((Join-Path $modDir 'language.txt'), $script:LanguageCode + [Environment]::NewLine, $utf8NoBom)
+Write-Step (T 'script.mod_installed')
+Write-Step (T 'installer.install.done')

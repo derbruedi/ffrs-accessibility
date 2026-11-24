@@ -2,6 +2,11 @@
 -- Sagt fokussierte Menueeintraege, geaenderte Werte und neu geoeffnete Bildschirme an.
 
 local BRIDGE_DLL = "ffrs_speech.dll"
+local T = dofile((function()
+    local info = debug and debug.getinfo and debug.getinfo(1, "S")
+    return info and info.source and info.source:match("^@(.*[\\/])") or ""
+end)() .. "i18n.lua")
+
 local PIPE_PATH = [[\\.\pipe\ffrs_speech]]
 local TICK_MS = 200
 local SCREEN_READ_DELAY_SECONDS = 0.4
@@ -63,29 +68,29 @@ local WALK_MIN_PROGRESS = 30
 local WALK_POINT_REACHED_DISTANCE = 70
 local STEER_TICK_MS = 1 -- praktisch jeder Frame: eine eingespeiste Eingabe gilt nur fuer einen Frame
 local GIMMICK_STATE_DEACTIVE = 1 -- eMapGimmickState::Deactive
-local DIRECTION_NAMES = { "vorne", "vorne rechts", "rechts", "hinten rechts", "hinten", "hinten links", "links", "vorne links" }
+local DIRECTION_NAMES = { "front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left" }
 
-local QUEST_CATEGORY = "Questziel"
-local TARGET_CATEGORIES = { QUEST_CATEGORY, "Aufträge", "Wichtige Gespräche", "Auftraggeber", "Händler", "Story-Ereignisse", "Personen", "Gegner", "Schätze", "Heiligtümer", "Esper", "Ausgänge", "Türen", "Speicherpunkte", "Objekte", "Erkunden" }
+local QUEST_CATEGORY = "quest"
+local TARGET_CATEGORIES = { QUEST_CATEGORY, "requests", "important_talks", "clients", "merchants", "story_events", "people", "enemies", "treasures", "sanctuaries", "esper", "exits", "doors", "save_points", "objects", "explore" }
 local NPC_NAMES_FILE = "npc_names.txt"
 local PICKUP_MAX_DISTANCE = 500
--- Spielbare Figuren reden in Gespraechen mit, ihr Name gehoert nie zur angesprochenen Person.
-local NON_NPC_SPEAKERS = { ["Rain"] = true, ["Lasswell"] = true, ["Fina"] = true, ["???"] = true }
+-- Spielbare Figuren werden ueber ihre Namenstabellen erkannt; "???" ist sprachunabhaengig.
+local NON_NPC_SPEAKERS = { ["???"] = true }
 
 -- Gesuchte Klassen, die speziellen zuerst. Ohne eMapInteractType gilt die Kategorie der Klasse,
 -- CPP_FieldObject hat keine, weil darunter auch unsichtbare Ausloeser und Waende fallen.
 -- Der dritte Wert steht fuer unsichtbare Volumen, bei denen bHidden nichts aussagt.
 local TARGET_SOURCES = {
-    { "CPP_MapUnit_NPC", { "Personen", "Person" } },
-    { "CPP_MapGimmick_TreasureBox", { "Schätze", "Schatztruhe" } },
-    { "CPP_MapGimmick_SavePoint", { "Speicherpunkte", "Speicherpunkt" } },
-    { "CPP_MapGimmick_Object_DoorBase", { "Ausgänge", "Tür" } },
-    { "CPP_MapGimmick_Trigger_DoorBase", { "Ausgänge", "Tür" } },
-    { "CPP_MapGimmick_Warp", { "Ausgänge", "Ausgang" } },
-    { "CPP_MapTransitionTrigger", { "Ausgänge", "Ausgang" }, true },
-    { "CPP_MapEncount", { "Gegner", "Begegnungsgebiet" }, true },
-    { "CPP_MapGimmick_EventTrigger", { "Story-Ereignisse", "Story-Ereignis" } },
-    { "CPP_MapGimmick_InteractEventTrigger", { "Objekte", "Untersuchen" } },
+    { "CPP_MapUnit_NPC", { "people", "person" } },
+    { "CPP_MapGimmick_TreasureBox", { "treasures", "treasure_chest" } },
+    { "CPP_MapGimmick_SavePoint", { "save_points", "save_point" } },
+    { "CPP_MapGimmick_Object_DoorBase", { "exits", "door" } },
+    { "CPP_MapGimmick_Trigger_DoorBase", { "exits", "door" } },
+    { "CPP_MapGimmick_Warp", { "exits", "exit" } },
+    { "CPP_MapTransitionTrigger", { "exits", "exit" }, true },
+    { "CPP_MapEncount", { "enemies", "encounter_area" }, true },
+    { "CPP_MapGimmick_EventTrigger", { "story_events", "story_event" } },
+    { "CPP_MapGimmick_InteractEventTrigger", { "objects", "inspect" } },
     { "CPP_FieldObject", nil },
 }
 
@@ -102,57 +107,49 @@ local RESULT_DATA_HOOK = "/Script/mucha.CPP_WBP_Btl_Result_Page_Reward:SetResult
 
 -- eMapInteractType: Kategorie und Ansage. Fehlende Typen landen unter "Objekte".
 local INTERACT_TYPES = {
-    [1] = { "Personen", "Person" },
-    [2] = { "Personen", "Personengruppe" },
-    [3] = { "Personen", "Gesprächspunkt" },
-    [4] = { "Objekte", "Untersuchen" },
-    [5] = { "Objekte", "Untersuchen" },
-    [6] = { "Objekte", "Untersuchen" },
-    [7] = { "Objekte", "Untersuchen" },
-    [8] = { "Objekte", "Mechanismus" },
-    [9] = { "Händler", "Handelsschiff" },
-    [10] = { "Gegner", "Kampf" },
-    [11] = { "Schätze", "Schatztruhe" },
-    [12] = { "Esper", "Esper-Wohnstätte" }, -- eigene Kategorie, nur eingezeichnete (menuInfo.esperTargets)
-    [13] = { "Ausgänge", "Tür" },
-    [14] = { "Objekte", "Fahrzeug" },
-    [15] = { "Objekte", "Schiff" },
-    [16] = { "Ausgänge", "Anlegestelle" },
-    [17] = { "Händler", "Laden" },
-    [18] = { "Händler", "Waffenladen" },
-    [19] = { "Händler", "Rüstungsladen" },
-    [20] = { "Händler", "Accessoireladen" },
-    [21] = { "Personen", "Gasthaus" },
-    [22] = { "Auftraggeber", "Auftragstafel" },
-    [23] = { "Personen", "Bank" },
-    [24] = { "Händler", "Chocoboladen" },
-    [25] = { "Personen", "Chocoborennen" },
-    [26] = { "Händler", "Musikladen" },
-    [27] = { "Objekte", "Briefkasten" }, -- eMapInteractType::DLCShop, BP_MapGimmick_DLC
-    [28] = { "Personen", "Wahrsager" },
-    [29] = { "Personen", "Kolosseum" },
-    [30] = { "Personen", "Kolosseum" },
-    [31] = { "Personen", "Kolosseum" },
-    [32] = { "Händler", "Visionsladen" },
-    [33] = { "Speicherpunkte", "Speicherpunkt" },
-    [34] = { "Ausgänge", "Ausgang" },
-    [35] = { "Ausgänge", "Ausgang" },
-    [36] = { "Objekte", "Wahrzeichen" },
-    [37] = { "Ausgänge", "Stadt" },
-    [38] = { "Ausgänge", "Dungeon" },
+    [1] = { "people", "person" },
+    [2] = { "people", "person_group" },
+    [3] = { "people", "talk_point" },
+    [4] = { "objects", "inspect" },
+    [5] = { "objects", "inspect" },
+    [6] = { "objects", "inspect" },
+    [7] = { "objects", "inspect" },
+    [8] = { "objects", "mechanism" },
+    [9] = { "merchants", "shop_ship" },
+    [10] = { "enemies", "battle" },
+    [11] = { "treasures", "treasure_chest" },
+    [12] = { "esper", "esper_home" },
+    [13] = { "exits", "door" },
+    [14] = { "objects", "vehicle" },
+    [15] = { "objects", "ship" },
+    [16] = { "exits", "pier" },
+    [17] = { "merchants", "shop" },
+    [18] = { "merchants", "weapon_shop" },
+    [19] = { "merchants", "armor_shop" },
+    [20] = { "merchants", "accessory_shop" },
+    [21] = { "people", "inn" },
+    [22] = { "clients", "request_board" },
+    [23] = { "people", "bank" },
+    [24] = { "merchants", "chocobo_shop" },
+    [25] = { "people", "chocobo_races" },
+    [26] = { "merchants", "music_shop" },
+    [27] = { "objects", "mailbox" },
+    [28] = { "people", "fortune_teller" },
+    [29] = { "people", "colosseum" },
+    [30] = { "people", "colosseum" },
+    [31] = { "people", "colosseum" },
+    [32] = { "merchants", "vision_shop" },
+    [33] = { "save_points", "save_point" },
+    [34] = { "exits", "exit" },
+    [35] = { "exits", "exit" },
+    [36] = { "objects", "landmark" },
+    [37] = { "exits", "city" },
+    [38] = { "exits", "dungeon" },
 }
 
 -- Bildschirme, deren Text als Textur gerendert ist und daher nicht auslesbar ist.
 local SCREEN_TEXT_OVERRIDES = {
-    WBP_DemoIntroductionLayout_C = "Danke für den Download von Final Fantasy Resonance. "
-        .. "Tauche ein in die Mysterien, die das Schicksal der Welt gestalten, "
-        .. "und erlebe in dieser Demo das komplette erste Kapitel. "
-        .. "Einschränkungen der Demo: Maximale Charakterstufe: 15, maximaler Visionsmeisterschaftsrang: 5. "
-        .. "Gespeicherte Daten können in die Vollversion übertragen werden. "
-        .. "Schmiede unzerstörbare Freundschaften, nutze die Kraft der Visionen "
-        .. "und beschwöre eine mächtige Esper. "
-        .. "Nun tauche ein in eine Geschichte über Vergeltung, Verbundenheit und Hoffnung, "
-        .. "Hoffnung, die in den Kristallen widerhallt. Schließen.",
+    WBP_DemoIntroductionLayout_C = T("screen.demo_intro"),
 }
 
 -- Text_VariationValue steht als unsichtbarer Platzhalter (9999) in jeder LP/MP-Anzeige, der Toast
@@ -331,7 +328,7 @@ walk = function(widget, options, out, depth)
         local amount = {}
         walk(widget.WidgetTree.RootWidget, options, amount, depth + 1)
         if #amount > 0 then
-            appendText(out, table.concat(amount, " ") .. " Gil")
+            appendText(out, T("money.amount", { amount = table.concat(amount, " ") }))
         end
         return
     end
@@ -366,7 +363,7 @@ end
 local function readTexts(root, options)
     local out = {}
     walk(root, options, out, 0)
-    return (table.concat(out, ", "):gsub(", /, ", " von "):gsub(":, ", ": "):gsub(", ×, ", " × "))
+    return (table.concat(out, T("list.separator")):gsub(", /, ", T("list.from")):gsub(":, ", ": "):gsub(", ×, ", " × "))
 end
 
 local function currentMenuItem(menu)
@@ -387,12 +384,12 @@ local menuInfo = {
     DIALOG_READ_DELAY_SECONDS = 0.1,
     UNIT_CACHE_SECONDS = 2,
     -- Reihenfolge der Tabs ist eine Annahme aus EUI_ItemCategory, das Spiel zeigt nur Symbole.
-    TAB_FALLBACK_NAMES = { "Alle", "Verbrauchsgegenstände", "Waffen", "Rüstungen", "Accessoires", "Wertsachen" },
+    TAB_FALLBACK_NAMES = { T("tab.all"), T("tab.consumables"), T("tab.weapons"), T("tab.armor"), T("tab.accessories"), T("tab.valuables") },
     -- Widgetname und Rueckfall-Titel der Abschnitte in WBP_UnitEquippedList.
     EQUIP_SECTIONS = {
-        { "WBP_ItemLIst", "Ausrüstung" },
-        { "WBP_VisionList", "Vision" },
-        { "WBP_UnitEquippedSkillList", "Fertigkeiten" },
+        { "WBP_ItemLIst", T("equip.section.equipment") },
+        { "WBP_VisionList", T("equip.section.vision") },
+        { "WBP_UnitEquippedSkillList", T("equip.section.skills") },
     },
     CATEGORY_SPEECH_SECONDS = 1,
     SEARCH_INTERVAL_SECONDS = 1,
@@ -402,20 +399,20 @@ local menuInfo = {
     -- eUnitParameterType mit den Begriffen der Statusanzeige, in deren Reihenfolge.
     -- Die Zuordnung Staerke = Attack usw. und FP = EquipCost ist aus dieser Reihenfolge abgeleitet.
     EQUIPMENT_PARAMETERS = {
-        { 1, "LP" }, { 2, "MP" }, { 3, "Bruchwert" },
-        { 12, "Phys. Angr." }, { 13, "Phys. Vert." }, { 14, "Mag. Angr." }, { 15, "Mag. Vert." }, { 16, "Heiligkeit" },
-        { 5, "Stärke" }, { 6, "Ausdauer" }, { 7, "Magie" }, { 8, "Geist" }, { 9, "Tempo" }, { 11, "FP" },
+        { 1, T("param.lp") }, { 2, T("param.mp") }, { 3, T("param.break") },
+        { 12, T("param.phys_attack") }, { 13, T("param.phys_defense") }, { 14, T("param.mag_attack") }, { 15, T("param.mag_defense") }, { 16, T("param.holy") },
+        { 5, T("param.strength") }, { 6, T("param.endurance") }, { 7, T("param.magic") }, { 8, T("param.spirit") }, { 9, T("param.speed") }, { 11, T("param.fp") },
     },
-    EQUIPMENT_TYPES = { [1] = "Waffe", [2] = "Rüstung", [3] = "Accessoire", [4] = "Vision" },
+    EQUIPMENT_TYPES = { [1] = T("equipment.type.weapon"), [2] = T("equipment.type.armor"), [3] = T("equipment.type.accessory"), [4] = T("equipment.type.vision") },
     -- eEquipmentDetailType, Rueckfall falls CPP_DA_ItemText nicht geladen ist.
     EQUIPMENT_DETAIL_TYPES = {
-        [1] = "Großschwert", [2] = "Katana", [3] = "Bogen", [4] = "Hammer", [5] = "Grimoire", [6] = "Schusswaffe",
-        [7] = "Stab", [8] = "Peitsche", [9] = "Schwere Rüstung", [10] = "Leichte Rüstung", [11] = "Robe",
+        [1] = T("equipment.detail.greatsword"), [2] = T("equipment.detail.katana"), [3] = T("equipment.detail.bow"), [4] = T("equipment.detail.hammer"), [5] = T("equipment.detail.grimoire"), [6] = T("equipment.detail.firearm"),
+        [7] = T("equipment.detail.staff"), [8] = T("equipment.detail.whip"), [9] = T("equipment.detail.heavy_armor"), [10] = T("equipment.detail.light_armor"), [11] = T("equipment.detail.robe"),
     },
     -- Rueckfall nach dem letzten Teil des GameplayTags; die Sammelkategorie hat im Datenasset keinen Namen.
     CATEGORY_FALLBACK_NAMES = {
-        all = "Alle", consumables = "Verbrauchsgegenstände", consumable = "Verbrauchsgegenstände", weapon = "Waffen",
-        armor = "Rüstungen", accessory = "Accessoires", valuable = "Wertsachen", artifact = "Artefakte", vision = "Visionen",
+        all = T("tab.all"), consumables = T("tab.consumables"), consumable = T("tab.consumables"), weapon = T("tab.weapons"),
+        armor = T("tab.armor"), accessory = T("tab.accessories"), valuable = T("tab.valuables"), artifact = T("tab.artifacts"), vision = T("tab.visions"),
     },
     defaults = {},
     itemLayout = nil,
@@ -694,12 +691,12 @@ function menuInfo.equippableState(row)
                 end)
                 for _, unit in ipairs(menuInfo.partyUnits()) do
                     if ok and unit.id == ownerId then
-                        return "ausgerüstet von " .. unit.name
+                        return T("equip.equipped_by", { name = unit.name })
                     end
                 end
-                return "von anderer Figur ausgerüstet"
+                return T("equip.equipped_by_other")
             end
-            return menuInfo.call(viewModel, "IsEquipped") and "ausgerüstet" or nil
+            return menuInfo.call(viewModel, "IsEquipped") and T("equip.equipped") or nil
         end
         node = node:GetOuter()
     end
@@ -710,7 +707,7 @@ function menuInfo.rowText(row)
     local text = readTexts(row, {})
     local state = menuInfo.equippableState(row)
     if state then
-        text = text:gsub("^A, ", "") .. ", " .. state
+        text = text:gsub("^A, ", "") .. T("list.separator") .. state
     end
     if state ~= menuInfo.equipStateLogged then
         menuInfo.equipStateLogged = state
@@ -719,20 +716,20 @@ function menuInfo.rowText(row)
     local slot = menuInfo.equipSlot(row)
     if text == "-" then
         if not slot then
-            return "Leer"
+            return T("equip.empty")
         end
         if slot.count > 1 then
-            return string.format("%s, Platz %d von %d, Leer", slot.title, slot.index, slot.count)
+            return T("equip.slot_empty", { title = slot.title, index = slot.index, count = slot.count })
         end
-        return slot.title .. ", Leer"
+        return T("equip.slot_title_empty", { title = slot.title })
     end
     -- Der einzelne Platz ist die Vision: Ihr Name allein verraet den Abschnitt nicht.
     if slot and slot.count == 1 and text ~= "" then
-        return slot.title .. ", " .. text
+        return table.concat({ slot.title, text }, T("list.separator"))
     end
     if text:find("^LP, ") then
         local name = menuInfo.unitRowName(row, text)
-        return name and (name .. ", " .. text) or text
+        return name and table.concat({ name, text }, T("list.separator")) or text
     end
     return text
 end
@@ -764,7 +761,7 @@ function menuInfo.describeEquipment(itemId)
     table.insert(kind, menuInfo.EQUIPMENT_TYPES[menuInfo.call(items, "GetEquipmentTypeById", itemId)])
     table.insert(kind, menuInfo.equipmentDetailName(menuInfo.call(items, "GetEquipmentDetailType", itemId)))
     if #kind > 0 then
-        table.insert(parts, table.concat(kind, ", "))
+        table.insert(parts, table.concat(kind, T("list.separator")))
     end
     local values = {}
     for _, parameter in ipairs(menuInfo.EQUIPMENT_PARAMETERS) do
@@ -774,7 +771,7 @@ function menuInfo.describeEquipment(itemId)
         end
     end
     if #values > 0 then
-        table.insert(parts, table.concat(values, ", "))
+        table.insert(parts, table.concat(values, T("list.separator")))
     end
     local unitFunctions = menuInfo.defaultObject("CPP_BFL_Unit")
     local wearers = {}
@@ -783,8 +780,8 @@ function menuInfo.describeEquipment(itemId)
             table.insert(wearers, unit.name)
         end
     end
-    table.insert(parts, #wearers > 0 and ("Ausrüstbar für " .. table.concat(wearers, ", ")) or "Für niemanden in der Gruppe")
-    return table.concat(parts, ". ")
+    table.insert(parts, #wearers > 0 and T("equip.wearable_by", { names = table.concat(wearers, T("list.separator")) }) or T("equip.nobody"))
+    return table.concat(parts, T("list.sentence_separator"))
 end
 
 -- Einmal je Fokus: Die Abfrage durchsucht Objektlisten und wuerde im 200-ms-Takt das Spiel bremsen.
@@ -1029,10 +1026,10 @@ function menuInfo.readMoney()
     end
     local money = menuInfo.call(menuInfo.defaultObject("CPP_BFL_SaveDataPlayer"), "GetCurrentMoney")
     if type(money) == "number" then
-        speak(string.format("%d Gil", money), true)
+        speak(T("money.amount", { amount = money }), true)
     else
         log("Gil nicht lesbar: " .. tostring(money))
-        speak("Gil nicht lesbar.", true)
+        speak(T("money.unreadable"), true)
     end
 end
 
@@ -1145,7 +1142,7 @@ local function setFocus(button, isFocused)
         return
     end
     if category then
-        speak(category .. ", " .. text, true)
+        speak(T("focus.category_value", { category = category, text = text }), true)
     elseif text ~= lastFocusSpeech or now - lastFocusSpeechAt > DUPLICATE_FOCUS_WINDOW_SECONDS then
         speak(text, menuInfo.mayInterrupt())
     end
@@ -1291,23 +1288,23 @@ function menuInfo.dialogItems()
             end
         end
     end
-    return table.concat(items, "; ")
+    return table.concat(items, T("list.semicolon"))
 end
 
 -- Endet die Nachricht mit einem Doppelpunkt, steht der Rest ausserhalb des Nachrichtentexts.
 local function completeDialogMessage(dialog, message)
-    if not message:find(":$") then
+    if not message:find("[:：]$") then
         return message
     end
     local items = menuInfo.dialogItems()
     if items ~= "" then
-        return message .. " " .. items
+        return T("dialog.append", { message = message, detail = items })
     end
     local ok, pickup = pcall(describePickup)
     if not ok then
         log("Fund nicht lesbar: " .. tostring(pickup))
     end
-    return ok and pickup and (message .. " " .. pickup) or message
+    return ok and pickup and T("dialog.append", { message = message, detail = pickup }) or message
 end
 
 local function readDialog(dialog)
@@ -1327,10 +1324,10 @@ end
 
 -- Die Analyse zeigt Elemente und Zustaende nur als Symbole. Namen aus den Spieltexten ("Feuerimmunitaet",
 -- "Gift aufheben" usw.), Widerstandsarten aus ST_UI_BattleDamageProp; 9 "Stopp" ist dort nicht belegt.
-menuInfo.ELEMENT_NAMES = { "Feuer", "Eis", "Wind", "Erde", "Blitz", "Wasser", "Licht", "Dunkel" }
-menuInfo.RESISTANCE_NAMES = { "Schwäche", "Widerstanden", "Immun", "Absorbiert", "Reflektiert" }
-menuInfo.CONDITION_NAMES = { "Gift", "Blind", "Schlaf", "Stumm", "Lähmung", "Konfus", "Stein", "Bann", "Stopp",
-    "Tobsucht", "Todesurteil", "Gemach", "Sofortiger Tod" }
+menuInfo.ELEMENT_NAMES = { T("element.fire"), T("element.ice"), T("element.wind"), T("element.earth"), T("element.thunder"), T("element.water"), T("element.light"), T("element.dark") }
+menuInfo.RESISTANCE_NAMES = { T("resistance.weak"), T("resistance.resisted"), T("resistance.immune"), T("resistance.absorbed"), T("resistance.reflected") }
+menuInfo.CONDITION_NAMES = { T("condition.poison"), T("condition.blind"), T("condition.sleep"), T("condition.silence"), T("condition.paralysis"), T("condition.confusion"), T("condition.petrify"), T("condition.banish"), T("condition.stop"),
+    T("condition.berserk"), T("condition.doom"), T("condition.calm"), T("condition.instant_death") }
 
 function menuInfo.eachValue(list, callback)
     if type(list) == "table" then
@@ -1353,7 +1350,7 @@ function menuInfo.resistanceName(viewModel, resistance)
         viewModel.ResistanceDA:FindResistanceProperty(resistance, result)
         return result.OutData.Name:ToString()
     end)
-    return ok and name ~= "" and name or menuInfo.RESISTANCE_NAMES[resistance] or ("Art " .. tostring(resistance))
+    return ok and name ~= "" and name or menuInfo.RESISTANCE_NAMES[resistance] or T("libra.kind", { id = resistance })
 end
 
 -- Gegner der letzten Zielauswahl, sonst der einzige analysierte Gegner.
@@ -1401,19 +1398,19 @@ function menuInfo.libraDetails()
     table.sort(order)
     local elementParts = {}
     for _, resistance in ipairs(order) do
-        table.insert(elementParts, menuInfo.resistanceName(viewModel, resistance) .. ": " .. table.concat(groups[resistance], ", "))
+        table.insert(elementParts, T("libra.element_group", { resistance = menuInfo.resistanceName(viewModel, resistance), elements = table.concat(groups[resistance], T("list.separator")) }))
     end
     local conditions = {}
     ok, err = pcall(function()
         menuInfo.eachValue(viewModel:GetInvalidConditionList(), function(condition)
-            table.insert(conditions, menuInfo.CONDITION_NAMES[condition] or ("Zustand " .. tostring(condition)))
+            table.insert(conditions, menuInfo.CONDITION_NAMES[condition] or T("libra.condition", { id = condition }))
         end)
     end)
     if not ok then
         log("Analyse Zustaende nicht lesbar: " .. tostring(err))
     end
     log("Analyse " .. tostring(viewModel.UniqueID) .. ": " .. table.concat(elementParts, "; ") .. " | " .. table.concat(conditions, ", "))
-    return #elementParts > 0 and table.concat(elementParts, "; ") or nil, #conditions > 0 and table.concat(conditions, ", ") or nil
+    return #elementParts > 0 and table.concat(elementParts, T("list.semicolon")) or nil, #conditions > 0 and table.concat(conditions, T("list.separator")) or nil
 end
 
 -- Setzt die Symbolinhalte hinter die Ueberschriften "Angriffselement" und "Widerstaende".
@@ -1424,9 +1421,9 @@ function menuInfo.libraText(text)
         if not addition or not first then
             return source
         end
-        return source:sub(1, last) .. ", " .. addition .. source:sub(last + 1)
+        return source:sub(1, last) .. T("list.separator") .. addition .. source:sub(last + 1)
     end
-    return insertAfter(insertAfter(text, "Angriffselement", elements), "Widerstände", conditions)
+    return insertAfter(insertAfter(text, T("game.libra.attack_element"), elements), T("game.libra.resistances"), conditions)
 end
 
 local function readScreen(screen)
@@ -1608,7 +1605,7 @@ function menuInfo.logVisibleWindows()
         end)
         if ok and inViewport then
             local textOk, text = pcall(readTexts, widget, {})
-            text = textOk and text or ("Fehler " .. tostring(text))
+            text = textOk and text or T("screen.error", { error = text })
             log(string.format("Sichtbar: %s %s aktiv %s: %s", shortClassName(widget), objectName(widget),
                 tostring(isA(widget, "CommonActivatableWidget") and widget:IsActivated()), text:sub(1, 300)))
         end
@@ -1638,7 +1635,7 @@ function menuInfo.modVersion()
     end
     local version = (file:read("*l") or ""):match("^%s*(.-)%s*$")
     file:close()
-    return version ~= "" and ("Version " .. version .. " ") or ""
+    return version ~= "" and T("version.prefix", { version = version }) or ""
 end
 
 -- Nach dem Neuladen (Strg+F9) haelt die DLL die alte Verbindung noch einen Moment: dann einige Male nachfassen.
@@ -1652,7 +1649,7 @@ function menuInfo.openPipe()
         return false, err
     end
     speechPipe = pipe
-    speak("Final Fantasy Resonance Zugang " .. menuInfo.modVersion() .. "geladen.", false)
+    speak(T("system.loaded", { version = menuInfo.modVersion() }), false)
     for _, callback in ipairs(menuInfo.onPipeReady) do
         pcall(callback)
     end
@@ -1914,14 +1911,14 @@ describePickup = function()
     local name = textOf(callFunction(nearest, "GetItemName"))
     if name then
         local count = nearest.m_ItemNum
-        table.insert(parts, type(count) == "number" and count > 1 and (count .. " mal " .. name) or name)
+        table.insert(parts, type(count) == "number" and count > 1 and T("pickup.amount", { count = count, name = name }) or name)
     end
     if type(nearest.m_Money) == "number" and nearest.m_Money > 0 then
-        table.insert(parts, nearest.m_Money .. " Gil")
+        table.insert(parts, T("money.amount", { amount = nearest.m_Money }))
     end
     log(string.format("Fund %s: Gegenstand %s, Anzahl %s, Geld %s", tostring(objectPath(nearest)),
         tostring(nearest.m_ItemId), tostring(nearest.m_ItemNum), tostring(nearest.m_Money)))
-    return #parts > 0 and table.concat(parts, ", ") or nil
+    return #parts > 0 and table.concat(parts, T("list.separator")) or nil
 end
 
 -- Leere Bedingungen gelten als erfuellt, nicht auswertbare auch: lieber ein Ziel zu viel als eines zu wenig.
@@ -2178,9 +2175,9 @@ end
 
 -- Art des aktiven Gespraechs nach der Ereignis-ID; FEV_ und andere sind Plauderei.
 menuInfo.STORY_EVENT_KINDS = {
-    { "^C%d%d_", "Hauptgeschichte" },
-    { "^ChrEv_", "Figurenepisode" },
-    { "^SubEv_", "Nebengeschichte" },
+    { "^C%d%d_", T("story_kind.main") },
+    { "^ChrEv_", T("story_kind.character") },
+    { "^SubEv_", T("story_kind.side") },
 }
 function menuInfo.npcStoryKind(actor)
     local eventId = menuInfo.npcActiveEvent(actor)
@@ -2433,28 +2430,24 @@ function menuInfo.isRequestGiver(actor, givers)
 end
 
 -- Angesagt werden nur Woerter aus dem Spiel. Die internen Bezeichnungen (INTERACT_TYPES, TARGET_SOURCES) bleiben
--- Schluessel fuer Kategorien und Sortierung. Hauptwoerter: ST_UI_Word TreasureChest, ST_UI_Guide SAVEPOINT_en,
--- INN_en, SHOP_en, COLOSSEUM_en, VISIONUPGRADE_en, ST_UI_QuestMenu QuestGoal. Alles andere bekommt das Aktionswort,
--- das das Spiel am Objekt zeigt (FindInteractActionText), sonst das passende aus ST_UI_Interact.
--- Wie der Eintrag im Hauptmenue; zeigt die aktuellen Ziele aller angenommenen Auftraege.
+-- Schluessel fuer Kategorien und Sortierung.
 menuInfo.REQUEST_CATEGORY = TARGET_CATEGORIES[2]
--- Wunsch User 16.11.: Figuren mit annehmbarem Auftrag (GetAcceptableRequestList) und die Auftragstafel; Laeden
--- stehen unter "Händler" statt unter "Personen".
-menuInfo.GIVER_CATEGORY = "Auftraggeber"
--- Wunsch User 16.11.: Figuren, deren aktuelles Gespraech Geschichte ist (menuInfo.npcStoryKind).
-menuInfo.STORY_TALK_CATEGORY = "Wichtige Gespräche"
+menuInfo.GIVER_CATEGORY = "clients"
+menuInfo.STORY_TALK_CATEGORY = "important_talks"
 menuInfo.requestGiverTitles = {}
 
+-- Objektarten ohne eigenes Aktionswort des Spiels.
 menuInfo.GAME_WORDS = {
-    Schatztruhe = "Schatztruhe", Speicherpunkt = "Speicherpunkt", Gasthaus = "Gasthaus", Kolosseum = "Kolosseum",
-    Laden = "Laden", Waffenladen = "Laden", ["Rüstungsladen"] = "Laden", Accessoireladen = "Laden",
-    Chocoboladen = "Laden", Musikladen = "Laden", Visionsladen = "Visionsverbesserung", Ziel = "Ziel",
+    treasure_chest = "object.treasure_chest", save_point = "object.save_point", inn = "object.inn",
+    colosseum = "object.colosseum", shop = "object.shop", weapon_shop = "object.shop",
+    armor_shop = "object.shop", accessory_shop = "object.shop", chocobo_shop = "object.shop",
+    music_shop = "object.shop", vision_shop = "object.vision_upgrade", landmark = "object.landmark",
 }
--- ST_UI_Interact: type_0001 Sprechen, type_0003 Oeffnen, type_0004 Weiter, type_0006 Kaempfen.
 menuInfo.ACTION_FALLBACK = {
-    Person = "Sprechen", Personengruppe = "Sprechen", ["Gesprächspunkt"] = "Sprechen", ["Tür"] = "Öffnen",
-    Ausgang = "Weiter", Stadt = "Weiter", Dungeon = "Weiter", Wahrzeichen = "Weiter", Begegnungsgebiet = "Kämpfen",
-    Kampf = "Kämpfen", Handelsschiff = "Mit Handelsschiff reden",
+    person = "action.talk", person_group = "action.talk", talk_point = "action.talk", door = "action.open",
+    exit = "action.continue", city = "action.continue", dungeon = "action.continue",
+    landmark = "action.continue", encounter_area = "action.fight", battle = "action.fight",
+    shop_ship = "action.talk_to_ship",
 }
 menuInfo.actionWords = {}
 
@@ -2473,35 +2466,36 @@ end
 -- Art des Objekts nach Klasse. Das Spiel hat dafuer keine Namen, nur das Aktionswort; ein sehender Spieler erkennt
 -- die Art aber am Aussehen (Wunsch User 07.11., Werft: neun Mal "Untersuchen"). Reihenfolge zaehlt: CallSwitch vor Switch.
 menuInfo.OBJECT_KINDS = {
-    { "Floor_Elevator", "Aufzug" }, { "CallSwitch", "Rufschalter für Aufzug" }, { "Switch", "Schalter" },
-    { "Lamp", "Lampe" }, { "MagicPot", "Topf" }, { "Medal", "Medaille" }, { "FieldItem", "Fundstück" },
-    { "Ladder", "Leiter" }, { "Gimmick_DLC", "Briefkasten" },
+    { "Floor_Elevator", "object.elevator" }, { "CallSwitch", "object.elevator_call" },
+    { "Switch", "object.switch" }, { "Lamp", "object.lamp" }, { "MagicPot", "object.pot" },
+    { "Medal", "object.medal" }, { "FieldItem", "object.pickup" }, { "Ladder", "object.ladder" },
+    { "Gimmick_DLC", "object.mailbox" },
 }
 
 function menuInfo.objectKind(actor)
     local name = actor and objectName(actor) or ""
     for _, entry in ipairs(menuInfo.OBJECT_KINDS) do
         if name:find(entry[1], 1, true) then
-            return entry[2]
+            return T(entry[2])
         end
     end
     return nil
 end
 
 function menuInfo.displayLabel(label, actor, objectType)
-    if menuInfo.GAME_WORDS[label] then
-        return menuInfo.GAME_WORDS[label]
+    local gameWord = menuInfo.GAME_WORDS[label]
+    if gameWord then
+        return T(gameWord)
     end
     local interactType = actor and interactTypeOf(actor)
     local word = interactType and menuInfo.actionWord(objectType or 2, interactType)
-    word = word or menuInfo.ACTION_FALLBACK[label] or label
+    word = word or T(menuInfo.ACTION_FALLBACK[label] or ("object." .. label))
     local kind = objectType ~= 1 and menuInfo.objectKind(actor)
     local inscription = actor and menuInfo.inscription(actor)
     if kind and inscription then
-        kind = kind .. ", Aufschrift " .. inscription
+        kind = T("object.with_inscription", { kind = kind, inscription = inscription })
     end
-    -- Art zuerst, dann was man damit tun kann (Wunsch User 08.11.): "Schalter, Untersuchen".
-    return kind and (kind .. ", " .. word) or word
+    return kind and T("object.kind_action", { kind = kind, action = word }) or word
 end
 
 -- Aufschriften, die ein sehender Spieler am Objekt liest, das Spiel aber nur in der Rueckfrage nennt
@@ -2534,7 +2528,7 @@ local function targetLabel(actor, source, info, path)
         return npcNames[path] or menuInfo.displayLabel(label, actor, 1)
     end
     -- Wahrzeichen der Weltkarte haengen an dem Ausgang, den sie markieren.
-    if label == "Wahrzeichen" then
+    if label == "landmark" then
         local ok, name = pcall(function()
             local trigger = actor.TransitionTrigger
             return trigger:IsValid() and exitTargetName(trigger, {})
@@ -2544,7 +2538,7 @@ local function targetLabel(actor, source, info, path)
         end
     end
     if label == QUEST_CATEGORY or source[1] == "CPP_MapGimmick_EventTrigger" then
-        return label
+        return T("category." .. label)
     end
     return menuInfo.displayLabel(label, actor, source[1] == "CPP_MapTransitionTrigger" and 3 or 2)
 end
@@ -2692,7 +2686,7 @@ local function questTargetKey(actor, keys, sourceClass)
 end
 
 local function exitLabel(label, name, actor, categoryName)
-    if categoryName ~= "Ausgänge" then
+    if categoryName ~= "exits" then
         return label
     end
     -- Nur der Kartenname aus dem Spiel, ohne eigene Zusaetze wie "Ausgang nach".
@@ -2737,12 +2731,12 @@ scanTargets = function(categoryName, origin)
     local targets = {}
     local seen = {}
     local questKeys = categoryName == QUEST_CATEGORY and questTargetKeys() or nil
-    local sortsDoors = categoryName == "Ausgänge" or categoryName == "Türen"
+    local sortsDoors = categoryName == "exits" or categoryName == "doors"
     local exits = sortsDoors and exitNames() or {}
     local giverCategory = categoryName == menuInfo.GIVER_CATEGORY
     local storyTalkCategory = categoryName == menuInfo.STORY_TALK_CATEGORY
     local storyKinds = {}
-    local requestGivers = (categoryName == "Personen" or giverCategory or questKeys) and menuInfo.requestGivers() or {}
+    local requestGivers = (categoryName == "people" or giverCategory or questKeys) and menuInfo.requestGivers() or {}
     local foundKeys = {}
     local sources = { table.unpack(TARGET_SOURCES) }
     if questKeys then
@@ -2757,12 +2751,12 @@ scanTargets = function(categoryName, origin)
                 local interactType = interactTypeOf(actor)
                 local info = interactType and INTERACT_TYPES[interactType] or source[2]
                 if not info and interactType then
-                    info = { "Objekte", "Objekt" }
+                    info = { "objects", "object" }
                 end
                 -- Tueren ohne Zielangabe fuehren nur innerhalb der Karte weiter und sind keine Ausgaenge.
                 if sortsDoors and info and info[2] == "Tür" then
                     local hasTarget = exits[path] or transitionPointName(actor)
-                    info = { hasTarget and "Ausgänge" or "Türen", "Tür" }
+                    info = { hasTarget and "exits" or "doors", "door" }
                 end
                 local matches, questExit = false, false
                 if questKeys then
@@ -2811,21 +2805,21 @@ scanTargets = function(categoryName, origin)
                     local location = menuInfo.interactPoint(actor)
                     local label = exitLabel(targetLabel(actor, source, info, path), exits[path], actor, categoryName)
                     if emptyChest then
-                        label = label .. ", leer"
+                        label = T("target.empty_chest", { label = label })
                     end
                     if questKeys and source[1] == "CPP_MapTransitionTrigger" then
                         label = exitTargetName(actor, {}) or label
                     end
                     if storyKinds[path] then
-                        label = label .. ", " .. storyKinds[path]
+                        label = T("target.with_story_kind", { label = label, kind = storyKinds[path] })
                     end
                     if source[1] == "CPP_MapUnit_NPC" and menuInfo.isRequestGiver(actor, requestGivers) then
                         local title = giverCategory and menuInfo.requestGiverTitles[actor.m_UniqueId]
-                        label = label .. ", " .. (title and ("Auftrag " .. title) or "Auftrag")
+                        label = T("target.with_request", { label = label, request = title and T("target.request_named", { title = title }) or T("target.request") })
                     end
                     -- Kartensymbole sind nur der markierte Ort, ihr Interaktionstyp sagt nichts ueber das Ziel.
                     if questKeys and path:find("MapIconPoint", 1, true) then
-                        label = "Ziel"
+                        label = T("nav.destination")
                     end
                     table.insert(targets, {
                         actor = actor,
@@ -2857,7 +2851,7 @@ scanTargets = function(categoryName, origin)
     end
     -- Auch Uebergaenge tragen Story-Ereignisse, etwa der Sprung zur Sirene im Turm (C01_036_01 an
     -- BP_MapTransitionTrigger_C_1, {progress:0}==1230). Aktiv heisst: ein Eintrag in m_EventList ist erfuellt.
-    if categoryName == "Story-Ereignisse" then
+    if categoryName == "story_events" then
         for _, trigger in ipairs(FindAllOf("CPP_MapTransitionTrigger") or {}) do
             local path = trigger:IsValid() and objectPath(trigger)
             local hasEvents = path and pcall(function()
@@ -2878,7 +2872,7 @@ scanTargets = function(categoryName, origin)
     -- Ist auf dieser Karte nichts markiert, fuehren meist die aktiven Story-Ereignisse weiter.
     if questKeys and #targets == 0 then
         log("Questziel: nichts markiert, nehme Story-Ereignisse")
-        local events = scanTargets("Story-Ereignisse", origin)
+        local events = scanTargets("story_events", origin)
         if #events > 0 then
             return events
         end
@@ -2916,7 +2910,7 @@ function menuInfo.deeperExits(origin)
         return result
     end
     local group, name = menuInfo.mapGroup(current), mapNameById(current)
-    for _, target in ipairs(scanTargets("Ausgänge", origin)) do
+    for _, target in ipairs(scanTargets("exits", origin)) do
         local sameOk, sameMap = pcall(function()
             return target.actor.m_IsSameMapTrasition
         end)
@@ -3075,12 +3069,12 @@ function menuInfo.questAwayTargets(origin)
             local path = objectPath(trigger)
             if not seen[path] then
                 seen[path] = true
-                local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("Ausgang", trigger, 3)
+                local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("exit", trigger, 3)
                 local location = menuInfo.interactPoint(trigger)
                 table.insert(result, {
                     actor = trigger,
                     path = path,
-                    label = (goalName and goalName ~= name) and (name .. ", Ziel: " .. goalName) or name,
+                    label = (goalName and goalName ~= name) and T("nav.label_with_destination", { label = name, destination = goalName }) or name,
                     location = { X = location.X, Y = location.Y, Z = location.Z },
                     distance = distance2D(location, origin),
                 })
@@ -3099,7 +3093,7 @@ end
 -- die Vision; vor Fortschritt 1095 fuehrt der Ausgang nirgends hin. Drinnen liegt die Vision als Ereignis-Ausloeser
 -- (Com_00Com_203_EV: BP_MapGimmick_EventTrigger, Int_LegendEV_01_01, sichtbar solange !{flag:1003}).
 -- Die Hoehlen mit Kartentyp VisionSmallShrine (02Lan_42 usw.) sind Kaempfe gegen starke Gegner, keine Visionen.
-menuInfo.SHRINE_CATEGORY = "Heiligtümer"
+menuInfo.SHRINE_CATEGORY = "sanctuaries"
 menuInfo.SHRINE_UNLOCK = "{progress:0}>=1095"
 menuInfo.SHRINES = {
     { first = 10200, revisit = 10220, flag = 1000 }, { first = 10201, revisit = 10221, flag = 1001 },
@@ -3127,7 +3121,7 @@ function menuInfo.shrineOf(mapId)
 end
 
 function menuInfo.shrineName(entry)
-    return (entry.revisit and mapNameById(entry.revisit)) or mapNameById(entry.first) or "Heiligtum"
+    return (entry.revisit and mapNameById(entry.revisit)) or mapNameById(entry.first) or T("shrine.default_name")
 end
 
 -- "offen", "erhalten" oder "verschlossen"; ohne lesbares Flag nil.
@@ -3142,8 +3136,8 @@ function menuInfo.shrineState(entry)
     return taken and "erhalten" or "offen"
 end
 
-local SHRINE_STATE_TEXT = { offen = "Vision noch nicht geholt", erhalten = "Vision schon geholt",
-    verschlossen = "noch verschlossen" }
+local SHRINE_STATE_TEXT = { offen = T("shrine.state.open"), erhalten = T("shrine.state.taken"),
+    verschlossen = T("shrine.state.locked") }
 
 -- Heiligtum hinter einem Ausgang: irgendein Eintrag der Liste oder das feste Ziel ist eine Heiligtumskarte.
 function menuInfo.shrineOfExit(trigger)
@@ -3182,14 +3176,14 @@ function menuInfo.shrineTargets(origin, wanted)
     local inside = current and menuInfo.shrineOf(current)
     if inside then
         local result = {}
-        for _, target in ipairs(scanTargets("Story-Ereignisse", origin)) do
-            target.label = "Vision"
+        for _, target in ipairs(scanTargets("story_events", origin)) do
+            target.label = T("shrine.vision")
             target.shrine, target.vision = inside, true
             table.insert(result, target)
         end
         if #result == 0 then
-            for _, target in ipairs(scanTargets("Ausgänge", origin)) do
-                target.label = target.label .. ", Vision hier schon geholt"
+            for _, target in ipairs(scanTargets("exits", origin)) do
+                target.label = T("shrine.vision_taken_here", { target = target.label })
                 target.shrine, target.leave = inside, true
                 table.insert(result, target)
             end
@@ -3210,7 +3204,7 @@ function menuInfo.shrineTargets(origin, wanted)
                 table.insert(result, {
                     actor = trigger,
                     path = objectPath(trigger),
-                    label = SHRINE_STATE_TEXT[state] and (label .. ", " .. SHRINE_STATE_TEXT[state]) or label,
+                    label = SHRINE_STATE_TEXT[state] and T("shrine.label_with_state", { label = label, state = SHRINE_STATE_TEXT[state] }) or label,
                     shrine = entry,
                     rank = state == "offen" and 0 or state == nil and 1 or state == "erhalten" and 2 or 3,
                     location = { X = location.X, Y = location.Y, Z = location.Z },
@@ -3244,11 +3238,11 @@ function menuInfo.shrineTargets(origin, wanted)
     end
     for _, trigger in ipairs(best) do
         local location = menuInfo.interactPoint(trigger)
-        local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("Ausgang", trigger, 3)
+        local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("exit", trigger, 3)
         table.insert(result, {
             actor = trigger,
             path = objectPath(trigger),
-            label = name .. ", Weg zum Heiligtum",
+            label = T("shrine.route_exit", { name = name }),
             away = goal,
             location = { X = location.X, Y = location.Y, Z = location.Z },
             distance = distance2D(location, origin),
@@ -3268,7 +3262,7 @@ end
 -- VisibleCondition ist die Bedingung der Kartenmarkierung (Geruecht gehoert, Esper noch nicht geholt). Nur diese
 -- Bereiche zaehlen, also nur, was auch auf der Karte des Spielers eingezeichnet ist. Die Tabelle dient abseits der
 -- Weltkarte (dort sind die Bereiche nicht geladen) und fuer den Namen; Odin und Bahamut haben keinen Kartenbereich.
-menuInfo.ESPER_CATEGORY = "Esper"
+menuInfo.ESPER_CATEGORY = "esper"
 menuInfo.ESPER_INTERACT_TYPE = 12 -- eMapInteractType::MythicalBeast
 menuInfo.ESPERS = {
     { name = "Ramuh", show = "{progress:12}==10" },
@@ -3299,7 +3293,7 @@ function menuInfo.markedEspers()
 end
 
 local function esperLabel(entry)
-    return entry and ("Esper-Wohnstätte " .. entry.name) or "Esper-Wohnstätte"
+    return entry and T("esper.home_named", { name = entry.name }) or T("esper.home")
 end
 
 -- Ziele der Kategorie Esper; wanted (Esper-Reise) beschraenkt auf eine Esper.
@@ -3345,11 +3339,11 @@ function menuInfo.esperTargets(origin, wanted)
     local exits = menuInfo.exitsToward(menuInfo.WORLD_MAP_ID)
     for _, trigger in ipairs(exits) do
         local location = menuInfo.interactPoint(trigger)
-        local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("Ausgang", trigger, 3)
+        local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("exit", trigger, 3)
         table.insert(result, {
             actor = trigger,
             path = objectPath(trigger),
-            label = name .. ", Weg zur Esper " .. table.concat(names, ", "),
+            label = T("esper.route_exit", { name = name, espers = table.concat(names, T("list.separator")) }),
             away = marked[1],
             location = { X = location.X, Y = location.Y, Z = location.Z },
             distance = distance2D(location, origin),
@@ -3414,8 +3408,8 @@ function menuInfo.requestTargets(origin)
                         local interactType = interactTypeOf(actor)
                         local info = interactType and INTERACT_TYPES[interactType] or source[2]
                         local label = targetLabel(actor, source, info, path)
-                        if label == QUEST_CATEGORY or path:find("MapIconPoint", 1, true) then
-                            label = "Ziel"
+                        if label == T("category.quest") or path:find("MapIconPoint", 1, true) then
+                            label = T("nav.destination")
                         end
                         add(actor, path, label .. ", " .. here[key].name, here[key])
                     end
@@ -3430,10 +3424,10 @@ function menuInfo.requestTargets(origin)
             log("Auftrag ohne Ausgang: " .. destination.name .. ", Karte " .. tostring(destination.mapId))
         end
         for _, trigger in ipairs(exits) do
-            local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("Ausgang", trigger, 3)
+            local name = exitTargetName(trigger, {}) or menuInfo.displayLabel("exit", trigger, 3)
             local label = name .. ", " .. destination.name
             if goalName and goalName ~= name then
-                label = label .. ", Ziel: " .. goalName
+                label = T("nav.label_with_destination", { label = label, destination = goalName })
             end
             add(trigger, objectPath(trigger), label, destination)
         end
@@ -3516,7 +3510,7 @@ local function directionName(origin, location, controller)
     local yaw = controller.PlayerCameraManager:GetCameraRotation().Yaw
     local angle = math.deg(math.atan(location.Y - origin.Y, location.X - origin.X)) - yaw
     local sector = math.floor(((angle % 360) + 22.5) / 45) % 8
-    return DIRECTION_NAMES[sector + 1]
+    return T("direction." .. DIRECTION_NAMES[sector + 1])
 end
 
 -- Eigene Wegekarte: Tastet ab der Spielerposition per Kollisionsabfrage alles Begehbare ab, verteilt auf
@@ -3918,7 +3912,7 @@ function navGrid.reset(level, useFile)
     navGrid.nextTone = os.clock() + navGrid.PROGRESS_SECONDS
     log("Wegekarte " .. level .. ": " .. (navGrid.fromFile and (navGrid.count .. " Punkte geladen") or "wird erfasst"))
     if not navGrid.fromFile then
-        speak("Wegekarte wird erfasst.", false)
+        speak(T("map.scanning"), false)
     end
 end
 
@@ -4068,7 +4062,7 @@ function navGrid.finishScan()
     if navGrid.announceFinish then
         navGrid.announceFinish = false
         navGrid.playTones(navGrid.FINISH_TONES)
-        speak("Wegekarte fertig.", false)
+        speak(T("map.ready"), false)
     end
 end
 
@@ -4457,12 +4451,12 @@ end
 
 function ambience.toggle()
     menuInfo.setSetting("objects", not ambience.enabled)
-    speak(ambience.enabled and "Objektklänge an." or "Objektklänge aus.", true)
+    speak(T(ambience.enabled and "ambience.on" or "ambience.off"), true)
 end
 
 function navGrid.toggleWalls()
     menuInfo.setSetting("walls", not navGrid.walls.enabled)
-    speak(navGrid.walls.enabled and "Wandtöne an." or "Wandtöne aus.", true)
+    speak(T(navGrid.walls.enabled and "walls.on" or "walls.off"), true)
 end
 
 -- Einstellungen der Mod (Wunsch User 17.11.): Strg+M oeffnet ein gesprochenes Menue. Bild auf/ab waehlt den Eintrag,
@@ -4473,21 +4467,21 @@ menuInfo.settings = {
     values = {},
     FILE = "einstellungen.txt",
     ITEMS = {
-        { key = "soundVolume", label = "Lautstärke aller Mod-Klänge", percent = true, default = 100 },
-        { key = "walls", label = "Wandtöne", default = true },
-        { key = "wallVolume", label = "Lautstärke Wandtöne", percent = true, default = 100 },
-        { key = "objects", label = "Objektklänge", default = true },
-        { key = "objectVolume", label = "Lautstärke Objektklänge", percent = true, default = 100 },
-        { key = "beacon", label = "Zielpuls beim automatischen Laufen", default = true },
-        { key = "beaconVolume", label = "Lautstärke Zielpuls", percent = true, default = 100 },
-        { key = "kind_person", label = "Klang für Personen", default = true },
-        { key = "kind_tuer", label = "Klang für Türen", default = true },
-        { key = "kind_schalter", label = "Klang für Schalter", default = true },
-        { key = "kind_truhe", label = "Klang für Truhen", default = true },
-        { key = "kind_gegenstand", label = "Klang für Gegenstände", default = true },
-        { key = "kind_objekt", label = "Klang für untersuchbare Objekte", default = true },
-        { key = "kind_speicherpunkt", label = "Klang für Speicherpunkte", default = true },
-        { key = "kind_ausgang", label = "Klang für Ausgänge", default = true },
+        { key = "soundVolume", label = T("settings.sound_volume"), percent = true, default = 100 },
+        { key = "walls", label = T("settings.walls"), default = true },
+        { key = "wallVolume", label = T("settings.wall_volume"), percent = true, default = 100 },
+        { key = "objects", label = T("settings.objects"), default = true },
+        { key = "objectVolume", label = T("settings.object_volume"), percent = true, default = 100 },
+        { key = "beacon", label = T("settings.beacon"), default = true },
+        { key = "beaconVolume", label = T("settings.beacon_volume"), percent = true, default = 100 },
+        { key = "kind_person", label = T("settings.person"), default = true },
+        { key = "kind_tuer", label = T("settings.door"), default = true },
+        { key = "kind_schalter", label = T("settings.switch"), default = true },
+        { key = "kind_truhe", label = T("settings.chest"), default = true },
+        { key = "kind_gegenstand", label = T("settings.item"), default = true },
+        { key = "kind_objekt", label = T("settings.object"), default = true },
+        { key = "kind_speicherpunkt", label = T("settings.save_point"), default = true },
+        { key = "kind_ausgang", label = T("settings.exit"), default = true },
     },
     PERCENT_STEP = 10,
     PERCENT_MAX = 200,
@@ -4579,17 +4573,18 @@ end
 
 function menuInfo.settings.describe(item)
     local value = menuInfo.settingValue(item.key)
-    return item.label .. ": " .. (item.percent and (value .. " Prozent") or (value and "an" or "aus"))
+    local valueText = item.percent and T("settings.percent", { value = value })
+        or T(value and "settings.on" or "settings.off")
+    return T("settings.describe", { label = item.label, value = valueText })
 end
 
 function menuInfo.settings.toggleMenu()
     local settings = menuInfo.settings
     settings.open = not settings.open
     if settings.open then
-        speak("Mod-Einstellungen. " .. settings.describe(settings.ITEMS[settings.index])
-            .. ". Bild auf und ab wählen, Umschalt mit Bild auf und ab ändern, Strg M schließt.", true)
+        speak(T("settings.open_help", { current = settings.describe(settings.ITEMS[settings.index]) }), true)
     else
-        speak("Mod-Einstellungen geschlossen.", true)
+        speak(T("settings.closed"), true)
     end
 end
 
@@ -5556,7 +5551,7 @@ end
 
 -- Kartensymbole fuehren nirgends hin (BP_MapIconPoint_C_6), echte Ausgaenge stehen selbst in der Liste.
 function navRoute.exitTargets(categoryName, targets)
-    if categoryName ~= "Ausgänge" and categoryName ~= "Türen" then
+    if categoryName ~= "exits" and categoryName ~= "doors" then
         return targets
     end
     local kept = {}
@@ -5587,7 +5582,7 @@ function navRoute.pointActor(path, location)
     return {
         IsValid = function() return true end,
         K2_GetActorLocation = function() return location end,
-        GetFullName = function() return "Erkunden " .. path end,
+        GetFullName = function() return T("explore.name", { path = path }) end,
         GetActorBounds = function() error("Punkt ohne Bereich") end,
     }
 end
@@ -5629,9 +5624,9 @@ function navRoute.exploreTargets(origin)
 end
 
 function navRoute.targetsFor(categoryName, origin)
-    if categoryName ~= "Erkunden" then
+    if categoryName ~= "explore" then
         local targets = scanTargets(categoryName, origin)
-        if categoryName == "Ausgänge" or categoryName == "Türen" then
+        if categoryName == "exits" or categoryName == "doors" then
             local ok, err = pcall(navRoute.nameExits, targets)
             if not ok then
                 log("Ausgangsnamen nicht lesbar: " .. tostring(err))
@@ -5789,10 +5784,10 @@ end
 
 -- Ausgaenge innerhalb der Karte zeigt die Liste nur in Reichweite (Wunsch User), Wege aus der Karte auch hinter Tueren.
 function navRoute.mayUseDoors(categoryName, target)
-    if categoryName == "Türen" then
+    if categoryName == "doors" then
         return false
     end
-    if categoryName ~= "Ausgänge" then
+    if categoryName ~= "exits" then
         return true
     end
     for _, link in ipairs(navRoute.doorLinks()) do
@@ -5804,15 +5799,15 @@ function navRoute.mayUseDoors(categoryName, target)
 end
 
 function navRoute.hopsText(hops)
-    return hops == 1 and "über 1 Übergang" or string.format("über %d Übergänge", hops)
+    return T.plural("route.hops", hops)
 end
 
 function navRoute.describe(route)
     if not route then
-        return navGrid.complete and "kein Weg bekannt" or "Wegekarte wird noch erfasst"
+        return T(navGrid.complete and "route.no_route" or "route.scanning")
     end
     local meters = math.floor(route.length / 100 + 0.5)
-    return string.format(route.partial and "Weg nur teilweise bekannt, %d Meter" or "Weg %d Meter", meters)
+    return T(route.partial and "route.partial" or "route.distance", { distance = meters })
 end
 
 -- Aufzuege mit Schalter: Bedient wird der Schalter neben der Plattform (m_pActiveBoxComponent), nicht die Mitte.
@@ -6072,7 +6067,7 @@ function navRoute.liftList(origin)
     if not navGrid.liftStops then
         return lifts
     end
-    local candidates = navRoute.targetsFor("Objekte", origin)
+    local candidates = navRoute.targetsFor("objects", origin)
     for _, candidate in ipairs(candidates) do
         local key = navRoute.liftKey(candidate.actor)
         local stops = key and navGrid.liftStops[key]
@@ -6124,7 +6119,7 @@ function navRoute.jumpList()
                 origin = ok and origin or nil,
                 extent = ok and extent or nil,
                 candidate = { actor = link.actor, path = link.path, location = link.location,
-                    label = menuInfo.displayLabel("Ausgang", link.actor, 3) },
+                    label = menuInfo.displayLabel("exit", link.actor, 3) },
             }
         end
     end
@@ -6362,13 +6357,12 @@ end
 function navRoute.liftText(plan)
     local first = plan.first
     if first.jump then
-        return string.format("über %s, zuerst %s", plan.rides == 1 and "einen Übergang" or (plan.rides .. " Fahrten und Übergänge"),
-            first.candidate.label)
+        return T("route.lift_jump", { rides = T.plural("route.rides", plan.rides), first = first.candidate.label })
     end
     local up = first.lift.stops[first.to].Z > first.lift.stops[first.from].Z
-    return string.format("über %s, zuerst %s%s", plan.rides == 1 and "einen Aufzug" or (plan.rides .. " Aufzüge"),
-        first.candidate.label, first.call and ", holt den Aufzug"
-            or ((up and ", nach oben" or ", nach unten") .. (first.absent and ", Plattform ist gerade nicht hier" or "")))
+    local action = first.call and T("route.lift_call")
+        or (T(up and "route.lift_up" or "route.lift_down") .. (first.absent and T("route.lift_absent") or ""))
+    return T("route.lift_detail", { lifts = T.plural("route.lifts", plan.rides), first = first.candidate.label, action = action })
 end
 
 -- Nach der Fahrt (oder wenn ein gerufener Aufzug angekommen ist) den naechsten Abschnitt starten.
@@ -6436,7 +6430,7 @@ function menuInfo.nextStep(pawn, origin, target)
     end
     local bestSwitch, switchRoute, bestLift, liftRoute, liftScore = nil, nil, nil, nil, nil
     local goal = menuInfo.nearestInBounds(target.actor, origin, target.location)
-    for _, candidate in ipairs(navRoute.targetsFor("Objekte", origin)) do
+    for _, candidate in ipairs(navRoute.targetsFor("objects", origin)) do
         if candidate.path ~= target.path then
             local name = objectName(candidate.actor)
             local isSwitch = name:find("Switch", 1, true) and not name:find("CallSwitch", 1, true)
@@ -6526,7 +6520,7 @@ function menuInfo.liftHint(pawn, origin, target)
     if not step then
         return ""
     end
-    return ", weiter über " .. step.label .. ", " .. navRoute.describe(route)
+    return T("route.continue_via", { label = step.label, route = navRoute.describe(route) })
 end
 
 function navRoute.reached(location, point)
@@ -6563,7 +6557,7 @@ function navRoute.currentPrompt(pawn)
     for _, trigger in ipairs(FindAllOf("CPP_MapTransitionTrigger") or {}) do
         local ok, inside = pcall(navRoute.insideManualExit, trigger, location)
         if ok and inside then
-            return exitNames()[objectPath(trigger)] or menuInfo.displayLabel("Ausgang", trigger, 3)
+            return exitNames()[objectPath(trigger)] or menuInfo.displayLabel("exit", trigger, 3)
         end
     end
     local prompt = nil
@@ -6586,7 +6580,7 @@ function navRoute.currentPrompt(pawn)
             local unit = element:get()
             if not prompt then
                 local name = npcNames[objectPath(unit)]
-                prompt = navRoute.withAction(name or menuInfo.displayLabel("Person", unit, 1), navRoute.OBJECT_TYPE_NPC, interactTypeOf(unit) or 0)
+                prompt = navRoute.withAction(name or menuInfo.displayLabel("person", unit, 1), navRoute.OBJECT_TYPE_NPC, interactTypeOf(unit) or 0)
             end
         end)
     end)
@@ -6605,7 +6599,7 @@ function navRoute.withAction(name, objectType, interactType)
     end
     local word = navRoute.actionWords[key]
     -- "Untersuchen, Schalter" beginnt schon mit dem Aktionswort.
-    return word and name:sub(1, #word) ~= word and (name .. ": " .. word) or name
+    return word and name:sub(1, #word) ~= word and T("object.name_action", { name = name, action = word }) or name
 end
 
 function navRoute.tickPrompt()
@@ -6623,7 +6617,7 @@ function navRoute.tickPrompt()
         navRoute.lastPrompt = prompt
         log("Tastenhinweis: " .. tostring(prompt))
         if prompt then
-            speak(prompt .. ", Enter drücken.", false)
+            speak(T("prompt.enter", { prompt = prompt }), false)
         end
     end
 end
@@ -6731,10 +6725,10 @@ function navRoute.updateStuck(walk, location, now)
         walk.detourAngle = navRoute.nextSidestep(walk, location, point)
         walk.detourUntil = now + navRoute.SIDESTEP_SECONDS
         log(string.format("Haengt bei %.0f %.0f %.0f, Seitenschritt %d Grad", location.X, location.Y, location.Z, walk.detourAngle))
-        local word = obstacle and obstacle.word or "unbekannt"
+        local word = (obstacle and obstacle.word) or T("nav.obstacle_unknown")
         if word ~= walk.lastObstacle then
             walk.lastObstacle = word
-            speak("Hindernis: " .. word .. ", suche neuen Weg.", false)
+            speak(T("nav.obstacle_replan", { obstacle = word }), false)
         end
     elseif walk.detourAngle ~= 0 and now >= walk.detourUntil then
         walk.detourAngle = 0
@@ -6750,14 +6744,14 @@ local function describeTarget(target, index, count, origin, pawn, controller)
         local hintOk, hint = pcall(menuInfo.liftHint, pawn, origin, target)
         way = way .. (hintOk and hint or "")
     end
-    return string.format("%s, %s, Luftlinie %d Meter %s, %d von %d", target.label, way, meters,
-        directionName(origin, target.location, controller), index, count)
+    return T("nav.target_description", { target = target.label, route = way, distance = meters,
+        direction = directionName(origin, target.location, controller), index = index, count = count })
 end
 
 local function selectTarget(steps)
     local pawn, controller = playerUnit()
     if not pawn then
-        speak("Pathfinder hier nicht verfügbar.", true)
+        speak(T("nav.unavailable"), true)
         return
     end
     local origin = pawn:K2_GetActorLocation()
@@ -6772,29 +6766,29 @@ local function selectTarget(steps)
     end
     local allTargets = navRoute.targetsFor(categoryName, origin)
     local targets = navRoute.exitTargets(categoryName, allTargets)
-    if categoryName ~= "Erkunden" then
+    if categoryName ~= "explore" then
         targets = navRoute.filterReachable(pawn, origin, targets, categoryName, true)
     end
     if #targets == 0 then
         selectedTargetPath = nil
         if categoryName == QUEST_CATEGORY then
-            speak(QUEST_CATEGORY .. ", hier nichts markiert."
-                .. (menuInfo.questElsewhere and (" Ziel: " .. menuInfo.questElsewhere .. ".") or ""), true)
+            speak(T(menuInfo.questElsewhere and "category.quest_none_marked_destination" or "category.quest_none_marked",
+                { destination = menuInfo.questElsewhere }), true)
             return
         end
         if categoryName == menuInfo.SHRINE_CATEGORY then
             local open = menuInfo.openShrineCount()
-            speak(categoryName .. ", hier in der Nähe keins. " .. (open == 1 and "Noch 1 Vision offen."
-                or ("Noch " .. open .. " Visionen offen.")), true)
+            speak(T("category.shrine_none", { category = T("category." .. categoryName),
+                open = T.plural("category.shrine_open", open) }), true)
             return
         end
         if categoryName == menuInfo.ESPER_CATEGORY then
             local marked = #menuInfo.markedEspers()
-            speak(categoryName .. (marked == 0 and ", keine Wohnstätte auf der Karte eingezeichnet."
-                or ", hier kein Weg bekannt. Eingezeichnet: " .. marked .. "."), true)
+            speak(T(marked == 0 and "category.esper_none_marked" or "category.esper_none_route",
+                { category = T("category." .. categoryName), marked = marked }), true)
             return
         end
-        speak(categoryName .. (#allTargets > 0 and ", nichts erreichbar." or ", nichts gefunden."), true)
+        speak(T(#allTargets > 0 and "category.none_reachable" or "category.none_found", { category = T("category." .. categoryName) }), true)
         return
     end
     local index = 1
@@ -6811,7 +6805,7 @@ local function selectTarget(steps)
     log(string.format("Ziel: %s %s %.0f %.0f %.0f", shortClassName(target.actor), target.path,
         target.location.X, target.location.Y, target.location.Z))
     local description = describeTarget(target, index, #targets, origin, pawn, controller)
-    speak(steps == 0 and (categoryName .. ", " .. description) or description, true)
+    speak(steps == 0 and T("category.target_description", { category = T("category." .. categoryName), description = description }) or description, true)
 end
 
 local function stepCategory(steps)
@@ -6841,11 +6835,11 @@ end
 function navRoute.startWalk()
     local pawn, controller = playerUnit()
     if not pawn then
-        speak("Pathfinder hier nicht verfügbar.", true)
+        speak(T("nav.unavailable"), true)
         return
     end
     if not selectedTargetPath then
-        speak("Kein Ziel ausgewählt.", true)
+        speak(T("nav.no_target"), true)
         return
     end
     local origin = pawn:K2_GetActorLocation()
@@ -6856,7 +6850,7 @@ function navRoute.startWalk()
         end
     end
     if not target then
-        speak("Das Ziel ist nicht mehr da.", true)
+        speak(T("nav.target_gone"), true)
         return
     end
     local startedAt = os.clock()
@@ -6875,7 +6869,7 @@ function navRoute.startWalk()
             local link = hop.first
             log(string.format("Tuerweg zu %s: %d Uebergaenge, zuerst %s", goalLabel, hops, tostring(link.path)))
             navRoute.chain = { path = selectedTargetPath, expected = link.destination }
-            target = { actor = link.actor, label = menuInfo.displayLabel("Ausgang", link.actor, 3), location = link.location, distance = distance2D(origin, link.location) }
+            target = { actor = link.actor, label = menuInfo.displayLabel("exit", link.actor, 3), location = link.location, distance = distance2D(origin, link.location) }
             route = navRoute.find(pawn, origin, target.location, false, target.actor)
         end
     end
@@ -6903,7 +6897,7 @@ function navRoute.startWalk()
         navGrid.logBlocker(origin, target.location)
     elseif not route and navGrid.complete then
         navGrid.logBlocker(origin, target.location)
-        speak("Kein Weg zu " .. target.label .. ", der Weg ist versperrt oder nicht begehbar.", true)
+        speak(T("nav.no_route", { target = target.label }), true)
         return
     end
     activeWalk = {
@@ -6932,13 +6926,13 @@ function navRoute.startWalk()
         pointIndex = 1,
     }
     if hops then
-        speak("Laufe zu " .. goalLabel .. ", " .. navRoute.hopsText(hops) .. ".", true)
+        speak(T("nav.walk_hops", { target = goalLabel, hops = navRoute.hopsText(hops) }), true)
     elseif liftPlan then
-        speak("Laufe zu " .. goalLabel .. ", " .. navRoute.liftText(liftPlan) .. ", " .. navRoute.describe(route) .. ".", true)
+        speak(T("nav.walk_lift", { target = goalLabel, lift = navRoute.liftText(liftPlan), route = navRoute.describe(route) }), true)
     elseif route then
-        speak("Laufe zu " .. target.label .. ", " .. navRoute.describe(route) .. ".", true)
+        speak(T("nav.walk_route", { target = target.label, route = navRoute.describe(route) }), true)
     else
-        speak((navGrid.complete and "Kein Weg bekannt" or "Wegekarte noch nicht fertig") .. ", laufe geradeaus zu " .. target.label .. ".", true)
+        speak(T("nav.walk_straight", { status = T(navGrid.complete and "map.no_route" or "map.incomplete"), target = target.label }), true)
     end
 end
 
@@ -6951,11 +6945,11 @@ function navRoute.startJourney(questIds, shrine, esper)
         questIds = questIds, shrine = shrine, esper = esper }
     if esper then
         log("Esper-Reise gestartet: " .. esper.name)
-        speak("Weg zur Esper gestartet, " .. esper.name .. ".", true)
+        speak(T("journey.esper_started", { esper = esper.name }), true)
         return
     end
     log(shrine and ("Heiligtum-Reise gestartet: " .. shrine.first) or "Questreise gestartet")
-    speak(shrine and ("Weg zum Heiligtum gestartet, " .. menuInfo.shrineName(shrine) .. ".") or "Questreise gestartet.", true)
+    speak(shrine and T("journey.shrine_started", { shrine = menuInfo.shrineName(shrine) }) or T("journey.started"), true)
 end
 
 function menuInfo.activeShrine()
@@ -6972,13 +6966,13 @@ function navRoute.planShrineLeg(pawn, origin)
     if target and target.leave then
         navRoute.journey = nil
         log("Heiligtum-Reise: Vision geholt, beendet")
-        speak("Die Vision dieses Heiligtums hast du. Weg zum Heiligtum beendet.", true)
+        speak(T("journey.shrine_vision_done"), true)
         return
     end
     if not target then
         navRoute.journey = nil
         log("Heiligtum-Reise: kein Schritt auf Karte " .. tostring(menuInfo.currentMapId()))
-        speak("Weg zum Heiligtum: hier ist kein nächster Schritt bekannt. Beendet.", true)
+        speak(T("journey.shrine_no_step"), true)
         return
     end
     if target.distance < navRoute.JOURNEY_NEAR_DISTANCE
@@ -7007,8 +7001,8 @@ function navRoute.planEsperLeg(pawn, origin)
         navRoute.journey = nil
         log("Esper-Reise: kein Schritt auf Karte " .. tostring(menuInfo.currentMapId()))
         speak(menuInfo.conditionString(journey.esper.show) == false
-            and ("Esper " .. journey.esper.name .. " ist nicht mehr eingezeichnet. Weg zur Esper beendet.")
-            or "Weg zur Esper: hier ist kein nächster Schritt bekannt. Beendet.", true)
+            and T("journey.esper_gone", { esper = journey.esper.name })
+            or T("journey.esper_no_step"), true)
         return
     end
     if target.esper and (target.distance < navRoute.JOURNEY_NEAR_DISTANCE
@@ -7078,11 +7072,11 @@ end
 function navRoute.walkToNextEvent()
     local pawn, controller = playerUnit()
     if not pawn then
-        speak("Hier nicht verfügbar.", true)
+        speak(T("system.not_available_here"), true)
         return
     end
     if not navGrid.prebuilt then
-        speak("Für diese Karte gibt es keine Wegekarte, Sprung nicht möglich.", true)
+        speak(T("event.no_map"), true)
         return
     end
     if navRoute.journey then
@@ -7091,10 +7085,10 @@ function navRoute.walkToNextEvent()
     end
     endWalk()
     local origin = pawn:K2_GetActorLocation()
-    local targets = navRoute.targetsFor("Story-Ereignisse", origin)
+    local targets = navRoute.targetsFor("story_events", origin)
     if #targets == 0 then
         log("Ereignissprung: kein Story-Ereignis")
-        speak("Kein Story-Ereignis auf dieser Karte.", true)
+        speak(T("event.none"), true)
         return
     end
     for _, target in ipairs(targets) do
@@ -7112,15 +7106,14 @@ function navRoute.walkToNextEvent()
                 pcall(function()
                     controller:SetControlRotation({ Pitch = 0, Yaw = yaw, Roll = 0 })
                 end)
-                speak(string.format("Gesprungen, %s %.0f Meter vor dir.", target.label,
-                    distance2D(point, goal) / 100), true)
+                speak(T("event.jumped", { target = target.label, distance = string.format("%.0f", distance2D(point, goal) / 100) }), true)
                 return
             end
         else
             log("Ereignissprung: kein Punkt der Wegekarte bei " .. target.path)
         end
     end
-    speak("Sprung zum Story-Ereignis nicht möglich.", true)
+    speak(T("event.jump_failed"), true)
 end
 
 function navRoute.journeyPick(pawn, origin, categoryName, accept)
@@ -7164,11 +7157,11 @@ function navRoute.planJourneyLeg(pawn)
     local destination = not journey.questIds and menuInfo.questElsewhere
     if not target and journey.questIds then
         log("Questreise: kein Auftragsziel mehr")
-        speak("Questreise: hier ist kein nächster Schritt bekannt.", true)
+        speak(T("journey.no_step"), true)
         return
     end
     if not target and destination then
-        categoryName = "Ausgänge"
+        categoryName = "exits"
         target = navRoute.journeyPick(pawn, origin, categoryName, function(candidate)
             return candidate.label:find(destination, 1, true)
         end) or navRoute.journeyPick(pawn, origin, categoryName, function(candidate)
@@ -7176,12 +7169,12 @@ function navRoute.planJourneyLeg(pawn)
         end)
     end
     if not target then
-        categoryName = "Story-Ereignisse"
+        categoryName = "story_events"
         target = navRoute.journeyPick(pawn, origin, categoryName)
     end
     if not target then
         log("Questreise: kein Schritt, Ziel " .. tostring(destination))
-        speak("Questreise: hier ist kein nächster Schritt bekannt" .. (destination and (". Ziel: " .. destination) or "") .. ".", true)
+        speak(T(destination and "journey.no_step_destination" or "journey.no_step", { destination = destination }), true)
         return
     end
     -- Ziel auf anderer Ebene ohne Weg: erst zum Schalter oder Aufzug, der dorthin fuehrt (Werft 07.11.).
@@ -7192,7 +7185,7 @@ function navRoute.planJourneyLeg(pawn)
             local step = menuInfo.nextStep(pawn, origin, target)
             if step then
                 log("Questreise: Zwischenschritt fuer " .. target.label)
-                categoryName, target = "Objekte", step
+                categoryName, target = "objects", step
             end
         end
     end
@@ -7239,7 +7232,7 @@ end
 local function toggleWalk()
     if activeWalk then
         navRoute.chain, navRoute.liftChain = nil, nil
-        endWalk(navRoute.journey and "Laufen abgebrochen, Questreise beendet." or "Laufen abgebrochen.")
+        endWalk(T(navRoute.journey and "nav.cancel_walk_journey" or "nav.cancel_walk"))
         navRoute.journey = nil
         return
     end
@@ -7248,7 +7241,7 @@ local function toggleWalk()
         if navRoute.journey then
             navRoute.journey = nil
             log("Questreise beendet")
-            speak("Questreise beendet.", true)
+            speak(T("journey.stopped"), true)
             return
         end
         local questIds = nil
@@ -7260,7 +7253,7 @@ local function toggleWalk()
                 end
             end
             if not questIds then
-                speak("Kein Ziel ausgewählt.", true)
+                speak(T("nav.no_target"), true)
                 return
             end
         end
@@ -7272,7 +7265,7 @@ local function toggleWalk()
         if navRoute.journey and navRoute.journey.shrine then
             navRoute.journey = nil
             log("Heiligtum-Reise beendet")
-            speak("Weg zum Heiligtum beendet.", true)
+            speak(T("journey.shrine_stopped"), true)
             return
         end
         local pawn = playerUnit()
@@ -7283,7 +7276,7 @@ local function toggleWalk()
             end
         end
         if not chosen then
-            speak("Kein Ziel ausgewählt.", true)
+            speak(T("nav.no_target"), true)
             return
         end
         local shrine = chosen.shrine or chosen.away
@@ -7297,7 +7290,7 @@ local function toggleWalk()
         if navRoute.journey and navRoute.journey.esper then
             navRoute.journey = nil
             log("Esper-Reise beendet")
-            speak("Weg zur Esper beendet.", true)
+            speak(T("journey.esper_stopped"), true)
             return
         end
         local pawn = playerUnit()
@@ -7308,7 +7301,7 @@ local function toggleWalk()
             end
         end
         if not chosen then
-            speak("Kein Ziel ausgewählt.", true)
+            speak(T("nav.no_target"), true)
             return
         end
         local esper = chosen.away or chosen.esper
@@ -7344,7 +7337,7 @@ function navRoute.tickChain()
         navRoute.startWalk()
     elseif now > chain.deadline then
         navRoute.chain = nil
-        speak("Übergang hat nicht ausgelöst, Weg abgebrochen.", true)
+        speak(T("transition.failed"), true)
     end
 end
 
@@ -7401,15 +7394,14 @@ function navRoute.reportNearbyExits(pawn, actor, location)
         end
     end
     if not nearest then
-        speak("Kein echter Übergang auf dieser Karte.", false)
+        speak(T("transition.none"), false)
         return
     end
-    local name = navRoute.linkRooms(pawn)[objectPath(nearest)] or names[objectPath(nearest)] or menuInfo.displayLabel("Ausgang", nearest, 3)
+    local name = navRoute.linkRooms(pawn)[objectPath(nearest)] or names[objectPath(nearest)] or menuInfo.displayLabel("exit", nearest, 3)
     if nearestInside then
-        speak("Im Bereich von " .. name .. ".", false)
+        speak(T("transition.in_area", { name = name }), false)
     else
-        speak(string.format("Nächster Übergang: %s, %d Meter %s.", name, math.floor(nearestDistance / 100 + 0.5),
-            directionName(location, nearestCenter, controller)), false)
+        speak(T("transition.nearest", { name = name, distance = math.floor(nearestDistance / 100 + 0.5), direction = directionName(origin, location, controller) }), false)
     end
 end
 
@@ -7418,7 +7410,7 @@ local function tickWalk()
         return
     end
     if not activeWalk.pawn:IsValid() or not activeWalk.actor:IsValid() then
-        endWalk("Das Ziel ist nicht mehr da.")
+        endWalk(T("nav.target_gone"))
         return
     end
     local location = activeWalk.pawn:K2_GetActorLocation()
@@ -7445,7 +7437,7 @@ local function tickWalk()
         if navRoute.journey and not navRoute.chain then
             navRoute.journey.arrivedPath, navRoute.journey.arrivedLevel = selectedTargetPath, navGrid.level
         end
-        endWalk(activeWalk.label .. (inRange and " erreicht, in Reichweite." or " erreicht."))
+        endWalk(T(inRange and "nav.arrived_in_range" or "nav.arrived", { target = activeWalk.label }))
         if not inRange and not navRoute.chain then
             local ok, err = pcall(navRoute.reportNearbyExits, pawn, actor, location)
             if not ok then
@@ -7459,14 +7451,13 @@ local function tickWalk()
         navGrid.logBlocker(location, goal)
         local hintOk, hint = pcall(menuInfo.liftHint, activeWalk.pawn, location,
             { path = objectPath(activeWalk.actor), location = goal })
-        endWalk(string.format("Weiter ist kein Weg bekannt, noch %d Meter", math.floor(straight / 100 + 0.5))
-            .. (hintOk and hint or "") .. ".")
+        endWalk(T("nav.dead_end", { distance = math.floor(straight / 100 + 0.5), hint = hintOk and hint or "" }))
         return
     end
     -- Zwischensequenzen und Menues sperren die Eingabe, dann soll nichts mehr weiterlaufen.
     if activeWalk.inputWasEnabled and activeWalk.pawn.m_IsEnableUnitInput == false then
         -- Ein automatischer Uebergang sperrt die Eingabe schon vor dem Wegende, tickChain laeuft danach von selbst weiter.
-        endWalk(not navRoute.chain and "Laufen unterbrochen." or nil)
+        endWalk(not navRoute.chain and T("nav.interrupted") or nil)
         return
     end
     local now = os.clock()
@@ -7477,7 +7468,7 @@ local function tickWalk()
         end
     elseif activeWalk.blocked or now - activeWalk.bestAt > WALK_GIVE_UP_SECONDS then
         navGrid.logBlocker(location, menuInfo.interactPoint(activeWalk.actor))
-        endWalk(string.format("Weg blockiert, noch %d Meter.", math.floor(remaining / 100 + 0.5)))
+        endWalk(T("nav.blocked", { distance = math.floor(remaining / 100 + 0.5) }))
     end
 end
 
@@ -7502,7 +7493,7 @@ local function updateDetour(walk, location, now)
         log(string.format("Ausweichen: %d Grad fuer %.1f s", walk.detourAngle, walk.detourSeconds))
         if not walk.detourAnnounced then
             walk.detourAnnounced = true
-            speak("Hindernis, weiche aus.", false)
+            speak(T("nav.obstacle_avoid"), false)
         end
     elseif walk.detourAngle ~= 0 and now >= walk.detourUntil then
         walk.detourAngle = 0
@@ -7748,7 +7739,7 @@ local function tickSteering()
     if manual then
         log("Eigene Eingabe (" .. manual .. "), Laufen beendet")
         navRoute.chain, navRoute.liftChain = nil, nil
-        endWalk(navRoute.journey and "Selbst gesteuert, Laufen und Questreise beendet." or "Selbst gesteuert, Laufen beendet.")
+        endWalk(T(navRoute.journey and "nav.manual_journey" or "nav.manual"))
         navRoute.journey = nil
         return
     end
@@ -7837,7 +7828,7 @@ local function battleUnitName(unit)
             return text
         end
     end
-    return "Einheit " .. tostring(unit.id)
+    return T("battle.unit_unknown", { id = unit.id })
 end
 
 local function isEnemyUnit(unit)
@@ -7869,13 +7860,14 @@ local function announceHitPointChange(unit, change)
     local name = battleUnitName(unit)
     local enemy = isEnemyUnit(unit)
     log(string.format("HP %s (%s): %d, jetzt %d", name, enemy and "Gegner" or "Verbuendeter", change, unit.hitPoints))
-    local parts = { name, change < 0 and (-change .. " Schaden") or (change .. " geheilt") }
+    local parts = { name, change < 0 and T("battle.damage", { amount = -change })
+        or T("battle.healed", { amount = change }) }
     if unit.hitPoints <= 0 then
-        table.insert(parts, enemy and "besiegt" or "kampfunfähig")
+        table.insert(parts, T(enemy and "battle.defeated" or "battle.incapacitated"))
     elseif not enemy then
-        table.insert(parts, "noch " .. unit.hitPoints .. " HP")
+        table.insert(parts, T("battle.hp_left", { hp = unit.hitPoints }))
     end
-    speak(table.concat(parts, ", "), false)
+    speak(table.concat(parts, T("list.separator")), false)
 end
 
 -- Erst melden, wenn der Wert einen Takt lang stabil ist, damit Trefferfolgen nicht zerhackt werden.
@@ -7918,13 +7910,14 @@ local function describeBattleTarget(unit)
     if isEnemyUnit(unit) and not unit.viewModel.bIsAnalyzed then
         return name
     end
-    return string.format("%s, %d von %d HP", name, unit.hitPoints, callFunction(unit.parameter, "GetMaxHitPoint") or 0)
+    return T("battle.hp_of_max", { name = name, hp = unit.hitPoints,
+        max = callFunction(unit.parameter, "GetMaxHitPoint") or 0 })
 end
 
 -- Taste H (Wunsch User 10.11.): HP aller Gegner im Kampf, auch ohne Analyse.
 function menuInfo.readEnemyHitPoints()
     if not battleActive then
-        speak("Kein Kampf.", true)
+        speak(T("battle.none"), true)
         return
     end
     local enemies = {}
@@ -7937,20 +7930,20 @@ function menuInfo.readEnemyHitPoints()
         return (tonumber(a.id) or 0) < (tonumber(b.id) or 0)
     end)
     if #enemies == 0 then
-        speak("Keine Gegner mehr.", true)
+        speak(T("battle.no_enemies"), true)
         return
     end
     local parts = {}
     for _, unit in ipairs(enemies) do
         local maximum = callFunction(unit.parameter, "GetMaxHitPoint")
         if type(maximum) == "number" and maximum > 0 then
-            parts[#parts + 1] = string.format("%s, %d von %d HP", battleUnitName(unit), unit.hitPoints, maximum)
+            parts[#parts + 1] = T("battle.hp_of_max", { name = battleUnitName(unit), hp = unit.hitPoints, max = maximum })
         else
-            parts[#parts + 1] = string.format("%s, %d HP", battleUnitName(unit), unit.hitPoints)
+            parts[#parts + 1] = T("battle.hp_only", { name = battleUnitName(unit), hp = unit.hitPoints })
         end
     end
     log("Gegner-HP: " .. table.concat(parts, "; "))
-    speak(table.concat(parts, "; "), true)
+    speak(table.concat(parts, T("list.semicolon")), true)
 end
 
 local function findActivated(className)
@@ -7987,7 +7980,7 @@ local function tickTargetSelection(units)
         end
     end
     log("Zielauswahl: " .. selection .. " = " .. table.concat(descriptions, "; "))
-    speak(table.concat(descriptions, "; "), true)
+    speak(table.concat(descriptions, T("list.semicolon")), true)
 end
 
 local function itemName(itemId)
@@ -7997,7 +7990,7 @@ local function itemName(itemId)
     local ok, text = pcall(function()
         return itemFunctions:GetItemName(itemId):ToString()
     end)
-    return ok and text ~= "" and text or ("Gegenstand " .. tostring(itemId))
+    return ok and text ~= "" and text or T("item.unknown", { id = itemId })
 end
 
 local function eachResultElement(array, callback)
@@ -8014,23 +8007,23 @@ end
 local function describeResult(data)
     local parts = {}
     if data.totalExperience > 0 then
-        table.insert(parts, data.totalExperience .. " Erfahrung")
+        table.insert(parts, T("result.experience", { amount = data.totalExperience }))
     end
     if data.totalMoney > 0 then
-        table.insert(parts, data.totalMoney .. " Gil")
+        table.insert(parts, T("money.amount", { amount = data.totalMoney }))
     end
     if data.totalAp > 0 then
-        table.insert(parts, data.totalAp .. " AP")
+        table.insert(parts, T("result.ap", { amount = data.totalAp }))
     end
     eachResultElement(data.itemDataList, function(item)
-        table.insert(parts, item.Num .. " mal " .. itemName(item.ItemId))
+        table.insert(parts, T("pickup.amount", { count = item.Num, name = itemName(item.ItemId) }))
     end)
     eachResultElement(data.unitDataList, function(unit)
         if unit.afterBattleLevel > unit.beforeBattleLevel then
-            table.insert(parts, "Stufenaufstieg auf Stufe " .. unit.afterBattleLevel)
+            table.insert(parts, T("result.level_up", { level = unit.afterBattleLevel }))
         end
     end)
-    return #parts > 0 and ("Erhalten: " .. table.concat(parts, ", ")) or "Nichts erhalten."
+    return #parts > 0 and T("result.received", { items = table.concat(parts, T("list.separator")) }) or T("result.nothing")
 end
 
 local function onResultData(_, resultData)
@@ -8067,7 +8060,7 @@ local function beginBattle()
     navRoute.chain, navRoute.journey, navRoute.liftChain = nil, nil, nil
     endWalk()
     log("Kampf beginnt" .. (wasNavigating and ", Navigation gestoppt" or ""))
-    speak("Kampf beginnt.", false)
+    speak(T("battle.started"), false)
 end
 
 local function announceEnemies(units)
@@ -8080,7 +8073,7 @@ local function announceEnemies(units)
     if #names > 0 then
         enemiesAnnounced = true
         log("Gegner: " .. table.concat(names, ", "))
-        speak("Gegner: " .. table.concat(names, ", "), false)
+        speak(T("battle.enemies", { names = table.concat(names, T("list.separator")) }), false)
     end
 end
 
@@ -8092,7 +8085,7 @@ local function tickBattleEnd()
         battleActive, battleEndSince = false, nil
         log("Kampf beendet")
         if not resultAnnounced then
-            speak("Kampf beendet.", false)
+            speak(T("battle.ended"), false)
         end
     end
 end
@@ -8235,9 +8228,9 @@ local function tickResultText(layout)
         speak(menuInfo.growthUpdate(parts, indices), false)
     elseif not firstOnPage and #indices == 1 and parts[indices[1]]:match("^%d+$") and indices[1] > 1 then
         -- Ein einzeln nachgezaehlter Wert ("8" nach dem Bonus) kommt mit seinem Begriff ("Erhaltene MSP").
-        speak(parts[indices[1] - 1] .. ", " .. unspoken[1], false)
+        speak(T("result.value_with_label", { label = parts[indices[1] - 1], value = unspoken[1] }), false)
     else
-        speak(menuInfo.resultSpeech(table.concat(unspoken, ", ")), firstOnPage)
+        speak(menuInfo.resultSpeech(table.concat(unspoken, T("list.separator"))), firstOnPage)
     end
 end
 
@@ -8278,7 +8271,7 @@ local function describeCurrentQuest()
         description = questObjective(textOf(quest.Name))
         if not description then
             local destination = textOf(quest.DestinationTitle)
-            description = destination and ("Ziel: " .. destination)
+            description = destination and T("quest.destination", { destination = destination })
         end
     end)
     if description then
@@ -8293,7 +8286,7 @@ end
 function readCurrentQuest()
     local text = describeCurrentQuest()
     log("Quest: " .. tostring(text))
-    speak(text or "Kein Questziel verfügbar.", true)
+    speak(text or T("quest.none"), true)
 end
 
 function tickBattle()
@@ -8386,12 +8379,12 @@ function menuInfo.stepFastTravel(steps)
     local viewModel = menuInfo.worldMapViewModel()
     if not viewModel then
         log("Schnellreise: CPP_VM_WldMap nicht gefunden")
-        speak("Weltkarte nicht bereit", true)
+        speak(T("fast_travel.not_ready"), true)
         return
     end
     local targets = menuInfo.fastTravelTargets(viewModel)
     if #targets == 0 then
-        speak("Keine Schnellreiseziele", true)
+        speak(T("fast_travel.none"), true)
         return
     end
     -- Die Liste wird jedes Mal neu gelesen, die Stelle haengt am Namen.
@@ -8414,13 +8407,13 @@ function menuInfo.stepFastTravel(steps)
     log("Schnellreise: Sprung zu " .. target.name .. " (Objekt " .. target.objectId .. ", Karte " .. target.mapId
         .. ")" .. (ok and "" or (" fehlgeschlagen: " .. tostring(err))))
     if not ok then
-        speak(target.name .. ", Sprung fehlgeschlagen", true)
+        speak(T("fast_travel.failed", { name = target.name }), true)
         return
     end
     -- Die Ortsansage des Spiels (tickWorldMap) bekommt die Stelle angehaengt; kommt sie nicht, sagt es der Rueckfall.
     menuInfo.fastTravelJump = {
         name = target.name,
-        position = index .. " von " .. #targets,
+        position = T("fast_travel.position", { index = index, count = #targets }),
         due = os.clock() + 1.5,
         checkAt = os.clock() + 0.5,
         viewModel = viewModel,
@@ -8446,7 +8439,7 @@ function menuInfo.tickFastTravelJump()
     end
     if now >= jump.due then
         menuInfo.fastTravelJump = nil
-        speak(jump.name .. ", " .. jump.position, true)
+        speak(T("fast_travel.jumped", { name = jump.name, position = jump.position }), true)
     end
 end
 

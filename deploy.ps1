@@ -7,7 +7,8 @@ $ErrorActionPreference = 'Stop'
 $target = Join-Path $GameDir 'FFRS\Binaries\Win64\ue4ss\Mods\FFRSAccess'
 New-Item -ItemType Directory -Force "$target\Scripts", "$target\bin" | Out-Null
 
-Copy-Item "$PSScriptRoot\mod\FFRSAccess\Scripts\main.lua", "$PSScriptRoot\mod\FFRSAccess\Scripts\narration.lua", "$PSScriptRoot\mod\FFRSAccess\Scripts\sounds.lua","$PSScriptRoot\mod\FFRSAccess\Scripts\karte_*.txt", "$PSScriptRoot\mod\FFRSAccess\Scripts\namen_spiel.txt", "$PSScriptRoot\mod\FFRSAccess\Scripts\namen_gelernt.txt" "$target\Scripts\" -Force
+Copy-Item "$PSScriptRoot\mod\FFRSAccess\Scripts\main.lua", "$PSScriptRoot\mod\FFRSAccess\Scripts\i18n.lua", "$PSScriptRoot\mod\FFRSAccess\Scripts\narration.lua", "$PSScriptRoot\mod\FFRSAccess\Scripts\sounds.lua","$PSScriptRoot\mod\FFRSAccess\Scripts\karte_*.txt", "$PSScriptRoot\mod\FFRSAccess\Scripts\namen_spiel.txt", "$PSScriptRoot\mod\FFRSAccess\Scripts\namen_gelernt.txt" "$target\Scripts\" -Force
+Copy-Item "$PSScriptRoot\mod\FFRSAccess\Scripts\locales" "$target\Scripts\" -Recurse -Force
 Copy-Item "$PSScriptRoot\build\ffrs_speech.dll", "$PSScriptRoot\build\prism.dll" "$target\bin\" -Force -ErrorAction Continue
 # Audiodeskription (Texte und Aufnahmen aus Visions of Grandshelt, GPL-3): nur kopieren, was sich geaendert hat.
 $descriptions = "$PSScriptRoot\mod\FFRSAccess\Descriptions"

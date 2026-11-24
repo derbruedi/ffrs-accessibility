@@ -12,6 +12,7 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Security.Principal;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -28,6 +29,188 @@ namespace FFRSSetup
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new SetupForm(args));
+        }
+    }
+
+    internal sealed class LanguagePack
+    {
+        public string Code;
+        public string NativeName;
+        public string Fallback;
+        public readonly Dictionary<string, string> Installer = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        public string Text(string key)
+        {
+            string value;
+            return Installer.TryGetValue(key, out value) ? value : null;
+        }
+    }
+
+    internal static class LocaleCatalog
+    {
+        public const string Auto = "auto";
+        private static readonly Dictionary<string, LanguagePack> Packs = LoadPacks();
+        private static LanguagePack current;
+        private static LanguagePack fallback;
+        private static readonly HashSet<string> warned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        static LocaleCatalog()
+        {
+            fallback = Find("de-DE");
+            current = fallback;
+        }
+
+        public static string CurrentCode
+        {
+            get { return current != null ? current.Code : "de-DE"; }
+        }
+
+        public static string CurrentNativeName
+        {
+            get { return current != null ? current.NativeName : "Deutsch"; }
+        }
+
+        public static IEnumerable<LanguagePack> Available
+        {
+            get { return Packs.Values.OrderBy(p => p.NativeName, StringComparer.CurrentCultureIgnoreCase); }
+        }
+
+        public static void Initialize(string requested)
+        {
+            Select(requested);
+        }
+
+        public static void Select(string requested)
+        {
+            requested = (requested ?? "").Trim();
+            if (requested.Length == 0 || string.Equals(requested, Auto, StringComparison.OrdinalIgnoreCase))
+                requested = System.Globalization.CultureInfo.CurrentUICulture.Name;
+            var resolvedCode = Resolve(requested);
+            current = resolvedCode != null ? Find(resolvedCode) : null;
+            if (current == null)
+                current = fallback;
+            if (current == null)
+                throw new InvalidOperationException("de-DE.lang fehlt in dieser Setup-Exe.");
+        }
+
+        public static string T(string key, params object[] values)
+        {
+            var text = current != null ? current.Text(key) : null;
+            if (text == null && fallback != null)
+                text = fallback.Text(key);
+            if (text == null)
+            {
+                var warning = CurrentCode + ":" + key;
+                if (warned.Add(warning))
+                    Installer.Log("Text fehlt: " + warning);
+                return key;
+            }
+            for (int i = 0; values != null && i + 1 < values.Length; i += 2)
+            {
+                var name = Convert.ToString(values[i]);
+                var value = values[i + 1];
+                text = text.Replace("{" + name + "}", value == null ? "" : Convert.ToString(value));
+            }
+            return text;
+        }
+
+        public static string N(string key, long count, params object[] values)
+        {
+            var extra = new object[(values == null ? 0 : values.Length) + 2];
+            extra[0] = "count";
+            extra[1] = count;
+            if (values != null)
+                Array.Copy(values, 0, extra, 2, values.Length);
+            return T(key + (count == 1 ? ".one" : ".other"), extra);
+        }
+
+        private static LanguagePack Find(string code)
+        {
+            LanguagePack pack;
+            return code != null && Packs.TryGetValue(code, out pack) ? pack : null;
+        }
+
+        private static string Resolve(string requested)
+        {
+            requested = (requested ?? "").Trim().Replace('_', '-');
+            if (requested.Length == 0)
+                return fallback != null ? fallback.Code : null;
+            var exact = Find(requested);
+            if (exact != null)
+                return exact.Code;
+            var lower = requested.ToLowerInvariant();
+            if (lower.StartsWith("zh"))
+            {
+                var chinese = Packs.Values.FirstOrDefault(p => p.Code.StartsWith("zh-", StringComparison.OrdinalIgnoreCase));
+                if (chinese != null)
+                    return chinese.Code;
+            }
+            if (lower.StartsWith("de"))
+            {
+                var german = Packs.Values.FirstOrDefault(p => p.Code.StartsWith("de-", StringComparison.OrdinalIgnoreCase));
+                if (german != null)
+                    return german.Code;
+            }
+            var baseName = lower.Split('-')[0];
+            var matches = Packs.Values.Where(p => p.Code.StartsWith(baseName + "-", StringComparison.OrdinalIgnoreCase)).ToList();
+            return matches.Count == 1 ? matches[0].Code : null;
+        }
+
+        private static Dictionary<string, LanguagePack> LoadPacks()
+        {
+            var result = new Dictionary<string, LanguagePack>(StringComparer.OrdinalIgnoreCase);
+            var assembly = Assembly.GetExecutingAssembly();
+            foreach (var resource in assembly.GetManifestResourceNames())
+            {
+                var normalized = resource.Replace('\\', '/');
+                if (!normalized.StartsWith("locales/", StringComparison.OrdinalIgnoreCase) || !normalized.EndsWith(".lang", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                using (var stream = assembly.GetManifestResourceStream(resource))
+                using (var reader = new StreamReader(stream, new UTF8Encoding(false, true)))
+                {
+                    var pack = ParsePack(reader.ReadToEnd(), normalized.Substring(8, normalized.Length - 13));
+                    result[pack.Code] = pack;
+                }
+            }
+            return result;
+        }
+
+        private static LanguagePack ParsePack(string text, string fileNameCode)
+        {
+            var pack = new LanguagePack { Code = fileNameCode, NativeName = fileNameCode, Fallback = "de-DE" };
+            string section = "meta";
+            foreach (var rawLine in text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+            {
+                var line = rawLine.Trim();
+                if (line.Length == 0 || line.StartsWith("#"))
+                    continue;
+                if (line.StartsWith("[") && line.EndsWith("]"))
+                {
+                    section = line.Substring(1, line.Length - 2);
+                    continue;
+                }
+                var split = line.IndexOf('=');
+                if (split <= 0)
+                    continue;
+                var key = line.Substring(0, split).Trim();
+                var value = Unescape(line.Substring(split + 1).Trim());
+                if (string.Equals(section, "meta", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (key == "code") pack.Code = value;
+                    else if (key == "native_name") pack.NativeName = value;
+                    else if (key == "fallback") pack.Fallback = value;
+                }
+                else if (string.Equals(section, "installer", StringComparison.OrdinalIgnoreCase))
+                {
+                    pack.Installer[key] = value;
+                }
+            }
+            return pack;
+        }
+
+        private static string Unescape(string value)
+        {
+            return value.Replace("\\n", "\n").Replace("\\r", "\r").Replace("\\t", "\t").Replace("\\\\", "\\");
         }
     }
 
@@ -53,8 +236,9 @@ namespace FFRSSetup
         // landet das Protokoll in dessen TEMP-Ordner.
         public static string AccountInfo()
         {
-            return $"Setup {Updater.CurrentVersion}, Konto {Environment.UserDomainName}\\{Environment.UserName}, "
-                + (IsElevated() ? "mit" : "ohne") + " Administratorrechte, Protokoll " + LogPath;
+            return LocaleCatalog.T("installer.account", "version", Updater.CurrentVersion,
+                "account", Environment.UserDomainName + "\\" + Environment.UserName,
+                "rights", LocaleCatalog.T(IsElevated() ? "installer.rights.admin" : "installer.rights.normal"), "log", LogPath);
         }
 
         // Eine schreibgeschuetzte Datei (etwa dwmapi.dll einer anderen Mod) laesst sich auch als Administrator nicht
@@ -67,7 +251,7 @@ namespace FFRSSetup
             if ((attributes & FileAttributes.ReadOnly) == 0)
                 return;
             File.SetAttributes(path, attributes & ~FileAttributes.ReadOnly);
-            report($"Schreibschutz entfernt: {path}");
+            report(LocaleCatalog.T("installer.readonly_removed", "path", path));
         }
 
         public static void MakeTreeWritable(string directory, Action<string> report)
@@ -83,13 +267,14 @@ namespace FFRSSetup
             try
             {
                 if (!File.Exists(path))
-                    return "Datei ist noch nicht da";
+                    return LocaleCatalog.T("installer.file.missing");
                 var info = new FileInfo(path);
-                return $"Datei da, {info.Length} Bytes, Attribute {info.Attributes}, geändert {info.LastWriteTime:yyyy-MM-dd HH:mm}";
+                return LocaleCatalog.T("installer.file.present", "length", info.Length, "attributes", info.Attributes,
+                    "changed", info.LastWriteTime.ToString("yyyy-MM-dd HH:mm"));
             }
             catch (Exception ex)
             {
-                return "Datei nicht lesbar: " + ex.Message;
+                return LocaleCatalog.T("installer.file.unreadable", "error", ex.Message);
             }
         }
 
@@ -183,7 +368,7 @@ namespace FFRSSetup
         {
             var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip");
             if (stream == null)
-                throw new InvalidOperationException("Die Installationsdateien fehlen in dieser Exe.");
+                throw new InvalidOperationException(LocaleCatalog.T("installer.payload_missing"));
             return new ZipArchive(stream, ZipArchiveMode.Read);
         }
 
@@ -221,7 +406,7 @@ namespace FFRSSetup
             return string.Equals(entryName, "dateien/Win64/dwmapi.dll", StringComparison.OrdinalIgnoreCase);
         }
 
-        public static void Install(string game, Action<string> report)
+        public static void Install(string game, string language, Action<string> report)
         {
             var win64 = Path.Combine(game, @"FFRS\Binaries\Win64");
             var modDir = Path.Combine(win64, @"ue4ss\Mods\FFRSAccess");
@@ -266,19 +451,19 @@ namespace FFRSSetup
                     {
                         // Nur diese Datei macht Probleme (Virenscanner: sieht aus wie eine untergeschobene Systemdatei).
                         // Den Rest trotzdem installieren, am Ende gezielt melden.
-                        report($"dwmapi.dll nicht geschrieben ({ex.GetType().Name}: {ex.Message}), {DescribeFile(target)}. Installiere den Rest weiter.");
+                        report(LocaleCatalog.T("installer.proxy_write_failed", "type", ex.GetType().Name, "error", ex.Message, "file", DescribeFile(target)));
                         proxyError = ex;
                         continue;
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        report($"Zugriff verweigert auf {target}: {DescribeFile(target)}");
+                        report(LocaleCatalog.T("installer.write_denied", "path", target, "file", DescribeFile(target)));
                         throw;
                     }
                     catch (IOException ex)
                     {
                         // Virenscanner blockieren oft dwmapi.dll oder UE4SS.dll; Meldung soll die Datei nennen.
-                        throw new IOException($"{target} konnte nicht geschrieben werden: {ex.Message}", ex);
+                        throw new IOException(LocaleCatalog.T("installer.write_failed", "path", target, "error", ex.Message), ex);
                     }
                     targets.Add(target);
                     written++;
@@ -289,34 +474,37 @@ namespace FFRSSetup
             var enabled = Path.Combine(modDir, "enabled.txt");
             if (!File.Exists(enabled))
                 File.WriteAllText(enabled, "");
+            var languageFile = Path.Combine(modDir, "language.txt");
+            File.WriteAllText(languageFile, (string.IsNullOrWhiteSpace(language) ? LocaleCatalog.CurrentCode : language.Trim()) + Environment.NewLine,
+                new UTF8Encoding(false));
             // Ein Virenscanner kann Dateien gleich nach dem Schreiben wieder entfernen.
             System.Threading.Thread.Sleep(1500);
             var missing = targets.Where(t => !File.Exists(t)).ToList();
             var proxyPath = Path.Combine(win64, "dwmapi.dll");
             if (proxyError == null && missing.Remove(proxyPath))
-                proxyError = new IOException("dwmapi.dll wurde geschrieben und ist danach wieder verschwunden.");
+                proxyError = new IOException(LocaleCatalog.T("installer.proxy_missing_after"));
             if (proxyError != null)
             {
-                report($"Alles andere ist installiert, {written} Dateien neu oder geändert, {unchanged} unverändert.");
+                report(LocaleCatalog.T("installer.others_installed", "written", written,
+                    "written_files", LocaleCatalog.N("installer.files", written), "unchanged", unchanged,
+                    "unchanged_files", LocaleCatalog.N("installer.files", unchanged)));
                 // Ohne Adminrechte zuerst den Neustart anbieten; der ueberspringt dann alles schon Geschriebene.
                 if (proxyError is UnauthorizedAccessException && !IsElevated())
-                    throw new UnauthorizedAccessException("dwmapi.dll im Spielordner: " + proxyError.Message, proxyError);
-                throw new IOException("Alles ist installiert bis auf die Datei dwmapi.dll im Ordner " + win64 + ". Ohne sie startet die Mod nicht. "
-                    + "Meist blockiert ein Virenscanner oder der Windows-Schutz „Überwachter Ordnerzugriff“ genau diese Datei, weil sie wie eine untergeschobene Systemdatei aussieht. "
-                    + "Bitte im Schutzverlauf von Windows-Sicherheit oder im Virenscanner nachsehen, die Datei bzw. das Setup zulassen "
-                    + "oder den Spielordner als Ausnahme eintragen und das Setup danach noch einmal starten.", proxyError);
+                    throw new UnauthorizedAccessException(LocaleCatalog.T("installer.proxy_unauthorized", "error", proxyError.Message), proxyError);
+                throw new IOException(LocaleCatalog.T("installer.proxy_blocked", "path", win64), proxyError);
             }
             if (missing.Count > 0)
-                throw new IOException("Diese Dateien wurden geschrieben, sind aber wieder verschwunden, vermutlich hat ein Virenscanner sie entfernt: "
-                    + string.Join(", ", missing.Select(Path.GetFileName)));
+                throw new IOException(LocaleCatalog.T("installer.files_vanished", "files", string.Join(", ", missing.Select(Path.GetFileName))));
             if (!hadUe4ss)
-                report("UE4SS installiert.");
+                report(LocaleCatalog.T("installer.ue4ss_installed"));
             else if (ue4ssWritten > 0)
-                report("UE4SS aktualisiert, vorhandene Einstellungen behalten.");
+                report(LocaleCatalog.T("installer.ue4ss_updated"));
             else
-                report("UE4SS ist schon aktuell.");
-            report(written == 0 ? $"Mod FFRSAccess ist schon aktuell, {unchanged} Dateien unverändert."
-                : $"Mod FFRSAccess installiert, {written} Dateien neu oder geändert, {unchanged} unverändert.");
+                report(LocaleCatalog.T("installer.ue4ss_current"));
+            report(written == 0
+                ? LocaleCatalog.T("installer.mod_current", "unchanged", unchanged, "files", LocaleCatalog.N("installer.files", unchanged))
+                : LocaleCatalog.T("installer.mod_installed", "written", written, "written_files", LocaleCatalog.N("installer.files", written),
+                    "unchanged", unchanged, "unchanged_files", LocaleCatalog.N("installer.files", unchanged)));
         }
 
         public static void Uninstall(string game, bool removeUe4ss, Action<string> report)
@@ -328,11 +516,11 @@ namespace FFRSSetup
             {
                 MakeTreeWritable(modDir, report);
                 Directory.Delete(modDir, true);
-                report("Mod FFRSAccess entfernt.");
+                report(LocaleCatalog.T("installer.mod_removed"));
             }
             else
             {
-                report("Die Mod FFRSAccess war nicht installiert.");
+                report(LocaleCatalog.T("installer.mod_not_installed"));
             }
             if (removeUe4ss && File.Exists(Path.Combine(ue4ss, "UE4SS.dll")))
             {
@@ -344,7 +532,7 @@ namespace FFRSSetup
                 }
                 MakeTreeWritable(ue4ss, report);
                 Directory.Delete(ue4ss, true);
-                report("UE4SS entfernt.");
+                report(LocaleCatalog.T("installer.ue4ss_removed"));
             }
         }
     }
@@ -377,40 +565,39 @@ namespace FFRSSetup
             Updater.Asset asset;
             try
             {
-                report("Suche Audiodeskription auf GitHub …");
+                report(LocaleCatalog.T("installer.descriptions.searching"));
                 asset = await Updater.FindNewestAssetAsync(AssetPattern);
             }
             catch (Exception ex)
             {
-                report("Audiodeskription: Suche fehlgeschlagen: " + ex.Message);
-                return installed.Length > 0 ? null
-                    : "Die Audiodeskription konnte nicht geladen werden, weil GitHub nicht erreichbar war. Das Setup bei bestehender Internetverbindung einfach noch einmal starten.";
+                report(LocaleCatalog.T("installer.descriptions.search_failed", "error", ex.Message));
+                return installed.Length > 0 ? null : LocaleCatalog.T("installer.descriptions.offline_note");
             }
             if (asset == null)
             {
-                report("Audiodeskription: Auf GitHub liegt keine.");
+                report(LocaleCatalog.T("installer.descriptions.none"));
                 return null;
             }
             var stamp = AssetPattern.Match(asset.Name).Groups[1].Value.ToLowerInvariant();
             if (string.Equals(stamp, installed, StringComparison.OrdinalIgnoreCase) && File.Exists(Path.Combine(folder, "cues.tsv")))
             {
-                report("Audiodeskription ist schon aktuell.");
+                report(LocaleCatalog.T("installer.descriptions.current"));
                 return null;
             }
-            report($"Lade Audiodeskription herunter, {asset.Size / (1024 * 1024)} MB. Das kann einige Minuten dauern …");
+            report(LocaleCatalog.T("installer.descriptions.downloading", "mb", asset.Size / (1024 * 1024)));
             var zipPath = Path.Combine(Path.GetTempPath(), asset.Name);
             try
             {
                 await Updater.DownloadFileAsync(asset, zipPath, report);
-                report("Entpacke Audiodeskription …");
+                report(LocaleCatalog.T("installer.descriptions.extracting"));
                 await Task.Run(() => Extract(zipPath, folder, stamp, report));
-                report("Audiodeskription installiert.");
+                report(LocaleCatalog.T("installer.descriptions.installed"));
                 return null;
             }
             catch (Exception ex)
             {
-                report("Audiodeskription fehlgeschlagen: " + ex);
-                return "Die Audiodeskription konnte nicht installiert werden: " + ex.Message + " Die Mod funktioniert trotzdem. Das Setup später noch einmal starten.";
+                report(LocaleCatalog.T("installer.descriptions.failed", "error", ex));
+                return LocaleCatalog.T("installer.descriptions.install_failed", "error", ex.Message);
             }
             finally
             {
@@ -443,13 +630,13 @@ namespace FFRSSetup
                         continue;
                     var target = Path.GetFullPath(Path.Combine(staging, name.Substring(FolderName.Length + 1).Replace('/', '\\')));
                     if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-                        throw new InvalidDataException("Ungültiger Pfad im Archiv: " + name);
+                        throw new InvalidDataException(LocaleCatalog.T("installer.descriptions.invalid_path", "name", name));
                     Directory.CreateDirectory(Path.GetDirectoryName(target));
                     entry.ExtractToFile(target, true);
                 }
             }
             if (!File.Exists(Path.Combine(staging, "cues.tsv")))
-                throw new InvalidDataException("Im Archiv fehlt cues.tsv.");
+                throw new InvalidDataException(LocaleCatalog.T("installer.descriptions.missing_cues"));
             File.WriteAllText(Path.Combine(staging, StampName), stamp);
             if (Directory.Exists(folder))
             {
@@ -582,12 +769,12 @@ namespace FFRSSetup
                             done += read;
                             if (total > 0 && done * 100 / total >= nextPercent && nextPercent < 100)
                             {
-                                report($"{nextPercent} Prozent geladen.");
+                                report(LocaleCatalog.T("installer.progress.percent", "percent", nextPercent));
                                 nextPercent += 10;
                             }
                         }
                         if (total > 0 && done != total)
-                            throw new IOException($"Download unvollständig: {done} von {total} Bytes.");
+                            throw new IOException(LocaleCatalog.T("installer.download.incomplete", "done", done, "total", total));
                     }
                 }
             }
@@ -640,26 +827,40 @@ namespace FFRSSetup
 
     internal sealed class SetupForm : Form
     {
+        private readonly Label languageLabel = new Label();
+        private readonly ComboBox languageBox = new ComboBox();
+        private readonly Label introLabel = new Label();
+        private readonly Label pathLabel = new Label();
         private readonly TextBox pathBox = new TextBox();
         private readonly Button browseButton = new Button();
         private readonly CheckBox removeUe4ssBox = new CheckBox();
         private readonly Button installButton = new Button();
         private readonly Button uninstallButton = new Button();
         private readonly Button readmeButton = new Button();
+        private readonly Label statusLabel = new Label();
         private readonly TextBox statusBox = new TextBox();
         private readonly Button closeButton = new Button();
         private readonly string[] startArgs;
+        private readonly bool explicitLanguage;
+        private string selectedLanguage = LocaleCatalog.Auto;
+        private bool changingLanguage;
 
         public SetupForm(string[] args)
         {
-            startArgs = args;
-            Text = "FINAL FANTASY RESONANCE Zugang " + Updater.CurrentVersion + " – Installation";
+            startArgs = args ?? new string[0];
+            string requestedLanguage;
+            explicitLanguage = TryGetOption(startArgs, "--language", out requestedLanguage);
+            LocaleCatalog.Initialize(explicitLanguage ? requestedLanguage : LocaleCatalog.Auto);
+            if (explicitLanguage)
+                selectedLanguage = requestedLanguage;
+
+            Text = LocaleCatalog.T("installer.title", "version", Updater.CurrentVersion);
             AccessibleName = Text;
             Font = new Font("Segoe UI", 10f);
             AutoScaleMode = AutoScaleMode.Dpi;
             StartPosition = FormStartPosition.CenterScreen;
-            MinimumSize = new Size(640, 460);
-            Size = new Size(760, 520);
+            MinimumSize = new Size(640, 500);
+            Size = new Size(780, 560);
 
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(12), AutoSize = false };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
@@ -667,79 +868,191 @@ namespace FFRSSetup
             Controls.Add(layout);
             int tab = 0;
 
-            var intro = new Label
+            languageLabel.AutoSize = true;
+            languageLabel.TabIndex = tab++;
+            layout.Controls.Add(languageLabel, 0, 0);
+            layout.SetColumnSpan(languageLabel, 2);
+
+            languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            languageBox.Dock = DockStyle.Fill;
+            languageBox.TabIndex = tab++;
+            languageBox.SelectedIndexChanged += (s, e) =>
             {
-                Text = "Dieses Setup installiert UE4SS und die Mod, mit der FINAL FANTASY RESONANCE über einen Screenreader spielbar ist. Bitte das Spiel vorher beenden.",
-                AutoSize = true, MaximumSize = new Size(700, 0), Margin = new Padding(0, 0, 0, 10), TabIndex = tab++,
+                if (changingLanguage)
+                    return;
+                var choice = languageBox.SelectedItem as LanguageChoice;
+                if (choice == null)
+                    return;
+                selectedLanguage = choice.Code;
+                LocaleCatalog.Select(choice.Code);
+                ApplyLocale();
             };
-            layout.Controls.Add(intro, 0, 0);
-            layout.SetColumnSpan(intro, 2);
+            layout.Controls.Add(languageBox, 0, 1);
+            layout.SetColumnSpan(languageBox, 2);
+
+            introLabel.AutoSize = true;
+            introLabel.MaximumSize = new Size(720, 0);
+            introLabel.Margin = new Padding(0, 10, 0, 10);
+            layout.Controls.Add(introLabel, 0, 2);
+            layout.SetColumnSpan(introLabel, 2);
 
             // Ein Label direkt vor dem Feld in der Tab-Reihenfolge benennt das Feld fuer Screenreader.
-            var pathLabel = new Label { Text = "&Spielordner:", AutoSize = true, TabIndex = tab++ };
-            layout.Controls.Add(pathLabel, 0, 1);
+            pathLabel.AutoSize = true;
+            pathLabel.TabIndex = tab++;
+            layout.Controls.Add(pathLabel, 0, 3);
             layout.SetColumnSpan(pathLabel, 2);
-            pathBox.AccessibleName = "Spielordner";
-            pathBox.AccessibleDescription = "Ordner, in dem FINAL FANTASY RESONANCE installiert ist";
             pathBox.Dock = DockStyle.Fill;
             pathBox.TabIndex = tab++;
-            layout.Controls.Add(pathBox, 0, 2);
-            browseButton.Text = "&Durchsuchen …";
-            browseButton.AccessibleName = "Spielordner durchsuchen";
+            layout.Controls.Add(pathBox, 0, 4);
             browseButton.AutoSize = true;
             browseButton.TabIndex = tab++;
             browseButton.Click += (s, e) => Browse();
-            layout.Controls.Add(browseButton, 1, 2);
+            layout.Controls.Add(browseButton, 1, 4);
 
-            removeUe4ssBox.Text = "Beim Deinstallieren auch &UE4SS entfernen (dann laufen auch andere UE4SS-Mods nicht mehr)";
             removeUe4ssBox.AutoSize = true;
             removeUe4ssBox.Margin = new Padding(0, 10, 0, 10);
             removeUe4ssBox.TabIndex = tab++;
-            layout.Controls.Add(removeUe4ssBox, 0, 3);
+            layout.Controls.Add(removeUe4ssBox, 0, 5);
             layout.SetColumnSpan(removeUe4ssBox, 2);
 
             var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, TabIndex = tab++ };
-            ConfigureButton(installButton, "&Installieren", 0, (s, e) => RunInstall());
-            ConfigureButton(uninstallButton, "D&einstallieren", 1, (s, e) => RunUninstall());
-            ConfigureButton(readmeButton, "&Liesmich anzeigen", 2, (s, e) => ShowReadme());
+            ConfigureButton(installButton, 0, (s, e) => RunInstall());
+            ConfigureButton(uninstallButton, 1, (s, e) => RunUninstall());
+            ConfigureButton(readmeButton, 2, (s, e) => ShowReadme());
             buttons.Controls.AddRange(new Control[] { installButton, uninstallButton, readmeButton });
-            layout.Controls.Add(buttons, 0, 4);
+            layout.Controls.Add(buttons, 0, 6);
             layout.SetColumnSpan(buttons, 2);
 
-            var statusLabel = new Label { Text = "&Meldungen:", AutoSize = true, Margin = new Padding(0, 10, 0, 0), TabIndex = tab++ };
-            layout.Controls.Add(statusLabel, 0, 5);
+            statusLabel.AutoSize = true;
+            statusLabel.Margin = new Padding(0, 10, 0, 0);
+            statusLabel.TabIndex = tab++;
+            layout.Controls.Add(statusLabel, 0, 7);
             layout.SetColumnSpan(statusLabel, 2);
             statusBox.Multiline = true;
             statusBox.ReadOnly = true;
             statusBox.ScrollBars = ScrollBars.Vertical;
             statusBox.Dock = DockStyle.Fill;
-            statusBox.AccessibleName = "Meldungen";
             statusBox.TabStop = true;
             statusBox.TabIndex = tab++;
-            layout.Controls.Add(statusBox, 0, 6);
+            layout.Controls.Add(statusBox, 0, 8);
             layout.SetColumnSpan(statusBox, 2);
             layout.RowStyles.Clear();
-            for (int row = 0; row < 6; row++)
+            for (int row = 0; row < 8; row++)
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            ConfigureButton(closeButton, "S&chließen", tab++, (s, e) => Close());
+            ConfigureButton(closeButton, tab++, (s, e) => Close());
             closeButton.Anchor = AnchorStyles.Right;
-            layout.Controls.Add(closeButton, 1, 7);
+            layout.Controls.Add(closeButton, 1, 9);
 
             AcceptButton = installButton;
             CancelButton = closeButton;
+            ApplyLocale();
             Shown += (s, e) => OnStart();
         }
 
-        private static void ConfigureButton(Button button, string text, int tabIndex, EventHandler click)
+        private sealed class LanguageChoice
         {
-            button.Text = text;
+            public readonly string Code;
+            public readonly string Name;
+
+            public LanguageChoice(string code, string name)
+            {
+                Code = code;
+                Name = name;
+            }
+
+            public override string ToString()
+            {
+                return Name;
+            }
+        }
+
+        private static void ConfigureButton(Button button, int tabIndex, EventHandler click)
+        {
             button.AutoSize = true;
             button.MinimumSize = new Size(140, 34);
             button.TabIndex = tabIndex;
             button.Click += click;
+        }
+
+        private void ApplyLocale()
+        {
+            Text = LocaleCatalog.T("installer.title", "version", Updater.CurrentVersion);
+            AccessibleName = Text;
+
+            languageLabel.Text = LocaleCatalog.T("installer.language.label");
+            languageBox.AccessibleName = LocaleCatalog.T("installer.language.name");
+            languageBox.AccessibleDescription = LocaleCatalog.T("installer.language.description");
+            introLabel.Text = LocaleCatalog.T("installer.intro");
+            pathLabel.Text = LocaleCatalog.T("installer.game_path.label");
+            pathBox.AccessibleName = LocaleCatalog.T("installer.game_path.name");
+            pathBox.AccessibleDescription = LocaleCatalog.T("installer.game_path.description");
+            browseButton.Text = LocaleCatalog.T("installer.browse");
+            browseButton.AccessibleName = LocaleCatalog.T("installer.browse.name");
+            removeUe4ssBox.Text = LocaleCatalog.T("installer.remove_ue4ss");
+            installButton.Text = LocaleCatalog.T("installer.install");
+            uninstallButton.Text = LocaleCatalog.T("installer.uninstall");
+            readmeButton.Text = LocaleCatalog.T("installer.show_readme");
+            statusLabel.Text = LocaleCatalog.T("installer.messages");
+            statusBox.AccessibleName = LocaleCatalog.T("installer.messages.name");
+            closeButton.Text = LocaleCatalog.T("installer.close");
+
+            changingLanguage = true;
+            var previous = selectedLanguage;
+            languageBox.Items.Clear();
+            languageBox.Items.Add(new LanguageChoice(LocaleCatalog.Auto, LocaleCatalog.T("installer.language.auto")));
+            foreach (var pack in LocaleCatalog.Available)
+                languageBox.Items.Add(new LanguageChoice(pack.Code, pack.NativeName));
+            for (int i = 0; i < languageBox.Items.Count; i++)
+            {
+                var choice = (LanguageChoice)languageBox.Items[i];
+                if (string.Equals(choice.Code, previous, StringComparison.OrdinalIgnoreCase))
+                {
+                    languageBox.SelectedIndex = i;
+                    break;
+                }
+            }
+            if (languageBox.SelectedIndex < 0)
+                languageBox.SelectedIndex = 0;
+            changingLanguage = false;
+        }
+
+        private static bool TryGetOption(string[] args, string name, out string value)
+        {
+            value = null;
+            for (int i = 0; args != null && i + 1 < args.Length; i++)
+            {
+                if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = args[i + 1];
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void SelectInstalledLanguage(string game)
+        {
+            if (explicitLanguage || string.IsNullOrWhiteSpace(game))
+                return;
+            var path = Path.Combine(game, @"FFRS\Binaries\Win64\ue4ss\Mods\FFRSAccess\language.txt");
+            try
+            {
+                if (!File.Exists(path))
+                    return;
+                var code = File.ReadAllText(path, Encoding.UTF8).Trim();
+                if (code.Length == 0)
+                    return;
+                LocaleCatalog.Select(code);
+                selectedLanguage = code;
+                ApplyLocale();
+            }
+            catch (Exception ex)
+            {
+                Installer.Log("language.txt nicht lesbar: " + ex.Message);
+            }
         }
 
         private void Report(string line)
@@ -752,16 +1065,30 @@ namespace FFRSSetup
         {
             // Nach dem Neustart mit Adminrechten: --install <Ordner> oder --uninstall <Ordner> [--ue4ss]
             Installer.Log($"Setup {Updater.CurrentVersion} gestartet: {Application.ExecutablePath} {string.Join(" ", startArgs)}");
-            if (startArgs.Length >= 2)
+            string commandMode = null, commandGame = null;
+            for (int i = 0; i + 1 < startArgs.Length; i++)
+            {
+                if (startArgs[i] == "--install" || startArgs[i] == "--uninstall")
+                {
+                    commandMode = startArgs[i];
+                    commandGame = startArgs[++i];
+                }
+                else if (startArgs[i] == "--language")
+                {
+                    i++;
+                }
+            }
+            if (commandMode != null)
             {
                 // Das Fenster nach der Admin-Abfrage kann hinter anderen Fenstern landen.
                 Activate();
-                pathBox.Text = startArgs[1];
+                pathBox.Text = commandGame;
+                SelectInstalledLanguage(pathBox.Text);
                 removeUe4ssBox.Checked = startArgs.Contains("--ue4ss");
                 pathBox.Focus();
-                if (startArgs[0] == "--install")
+                if (commandMode == "--install")
                     RunInstall();
-                else if (startArgs[0] == "--uninstall")
+                else
                     RunUninstall();
                 return;
             }
@@ -773,18 +1100,19 @@ namespace FFRSSetup
             catch (Exception ex)
             {
                 found = new List<string>();
-                Report("Steam-Suche fehlgeschlagen: " + ex.Message);
+                Report(LocaleCatalog.T("installer.search_failed", "error", ex.Message));
             }
             if (found.Count > 0)
             {
                 pathBox.Text = found[0];
-                Report("Gefundener Spielordner: " + found[0]);
+                SelectInstalledLanguage(found[0]);
+                Report(LocaleCatalog.T("installer.found", "path", found[0]));
                 foreach (var other in found.Skip(1))
-                    Report("Ebenfalls gefunden: " + other);
+                    Report(LocaleCatalog.T("installer.also_found", "path", other));
             }
             else
             {
-                Report("Kein Spielordner gefunden. Bitte den Spielordner eingeben oder Durchsuchen wählen.");
+                Report(LocaleCatalog.T("installer.none_found"));
             }
             pathBox.Focus();
             pathBox.SelectAll();
@@ -793,7 +1121,7 @@ namespace FFRSSetup
 
         private async void CheckForUpdate()
         {
-            Report($"Installierte Setup-Version {Updater.CurrentVersion}, suche nach Updates …");
+            Report(LocaleCatalog.T("installer.update.checking", "version", Updater.CurrentVersion));
             Updater.Release release;
             try
             {
@@ -801,38 +1129,39 @@ namespace FFRSSetup
             }
             catch (Exception ex)
             {
-                Report("Update-Suche fehlgeschlagen: " + ex.Message);
+                Report(LocaleCatalog.T("installer.update.failed", "error", ex.Message));
                 return;
             }
             if (release == null)
             {
-                Report("Dies ist die neueste Version.");
+                Report(LocaleCatalog.T("installer.update.latest"));
                 return;
             }
-            Report($"Neue Version {release.Version} gefunden.");
-            var answer = MessageBox.Show(this, $"Version {release.Version} ist verfügbar, dieses Setup ist Version {Updater.CurrentVersion}. Jetzt herunterladen und installieren?",
+            Report(LocaleCatalog.T("installer.update.available", "version", release.Version));
+            var answer = MessageBox.Show(this, LocaleCatalog.T("installer.update.prompt", "new", release.Version, "current", Updater.CurrentVersion),
                 Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (answer != DialogResult.Yes)
             {
-                Report("Update übersprungen.");
+                Report(LocaleCatalog.T("installer.update.skipped"));
                 pathBox.Focus();
                 return;
             }
             SetBusy(true);
-            Report("Lade Version " + release.Version + " herunter …");
+            Report(LocaleCatalog.T("installer.update.downloading", "version", release.Version));
             try
             {
                 var setup = await Updater.DownloadAsync(release);
                 // Das neue Setup installiert gleich in den Ordner aus dem Feld, sonst startet es normal.
                 var game = Installer.ResolveGameDir(pathBox.Text);
-                var arguments = game != null ? $"--install \"{game.TrimEnd('\\')}\"" : "";
+                var arguments = (game != null ? $"--install \"{game.TrimEnd('\\')}\" " : "")
+                    + $"--language \"{LocaleCatalog.CurrentCode}\"";
                 Process.Start(new ProcessStartInfo(setup, arguments) { UseShellExecute = true });
                 Close();
             }
             catch (Exception ex)
             {
-                Report("Download fehlgeschlagen: " + ex.Message);
-                Tell("Das Update konnte nicht geladen werden: " + ex.Message, MessageBoxIcon.Error);
+                Report(LocaleCatalog.T("installer.update.download_failed", "error", ex.Message));
+                Tell(LocaleCatalog.T("installer.update.load_failed", "error", ex.Message), MessageBoxIcon.Error);
                 SetBusy(false);
                 pathBox.Focus();
             }
@@ -840,7 +1169,7 @@ namespace FFRSSetup
 
         private void Browse()
         {
-            using (var dialog = new FolderBrowserDialog { Description = "Ordner von FINAL FANTASY RESONANCE wählen", ShowNewFolderButton = false })
+            using (var dialog = new FolderBrowserDialog { Description = LocaleCatalog.T("installer.browse.description"), ShowNewFolderButton = false })
             {
                 if (Directory.Exists(pathBox.Text))
                     dialog.SelectedPath = pathBox.Text;
@@ -855,14 +1184,14 @@ namespace FFRSSetup
             var game = Installer.ResolveGameDir(pathBox.Text);
             if (game == null)
             {
-                Tell("In diesem Ordner liegt kein FINAL FANTASY RESONANCE. Erwartet wird darin die Datei " + Installer.ExeRelative + ".", MessageBoxIcon.Warning);
+                Tell(LocaleCatalog.T("installer.game.invalid", "file", Installer.ExeRelative), MessageBoxIcon.Warning);
                 pathBox.Focus();
                 return null;
             }
             pathBox.Text = game;
             if (Installer.IsGameRunning(Path.Combine(game, @"FFRS\Binaries\Win64")))
             {
-                Tell("Das Spiel läuft gerade. Bitte das Spiel beenden und es dann noch einmal versuchen.", MessageBoxIcon.Warning);
+                Tell(LocaleCatalog.T("installer.game.running"), MessageBoxIcon.Warning);
                 return null;
             }
             return game;
@@ -874,9 +1203,9 @@ namespace FFRSSetup
             if (game != null)
                 Run("--install", game, async () =>
                 {
-                    Installer.Install(game, Report);
+                    Installer.Install(game, LocaleCatalog.CurrentCode, Report);
                     return await Descriptions.UpdateAsync(game, Report);
-                }, "Installation fertig. Beim nächsten Spielstart sagt die Mod: Final Fantasy Resonance Zugang geladen.");
+                }, LocaleCatalog.T("installer.install.done"));
         }
 
         private void RunUninstall()
@@ -887,7 +1216,7 @@ namespace FFRSSetup
                 {
                     Installer.Uninstall(game, removeUe4ssBox.Checked, Report);
                     return Task.FromResult<string>(null);
-                }, "Deinstallation fertig.");
+                }, LocaleCatalog.T("installer.uninstall.done"));
         }
 
         // Laeuft gerade eine Installation (mit Download), darf das Fenster nicht zugehen.
@@ -898,7 +1227,7 @@ namespace FFRSSetup
             if (running && e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
-                Report("Bitte warten, die Installation läuft noch.");
+                Report(LocaleCatalog.T("installer.busy"));
                 return;
             }
             base.OnFormClosing(e);
@@ -910,31 +1239,30 @@ namespace FFRSSetup
             SetBusy(true);
             running = true;
             Report(Installer.AccountInfo());
-            Report("Spielordner: " + game);
+            Report(LocaleCatalog.T("installer.game_path.status", "path", game));
             try
             {
                 var note = await action();
                 running = false;
-                var message = string.IsNullOrEmpty(note) ? doneMessage : doneMessage + " " + note;
+                var message = string.IsNullOrEmpty(note) ? doneMessage : LocaleCatalog.T("installer.completion_with_note", "message", doneMessage, "note", note);
                 Report(message);
                 Tell(message, string.IsNullOrEmpty(note) ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             }
             catch (UnauthorizedAccessException ex)
             {
                 running = false;
-                Report("Keine Schreibrechte: " + ex.Message);
+                Report(LocaleCatalog.T("installer.no_write_access", "error", ex.Message));
                 if (Installer.IsElevated())
                 {
                     // Schon mit Adminrechten: ein weiterer Neustart hilft nicht, sonst entsteht eine Schleife.
-                    var message = "Auch mit Administratorrechten ist das Schreiben im Spielordner gesperrt: " + ex.Message
-                        + " Häufige Ursache ist der Windows-Schutz „Überwachter Ordnerzugriff“ oder ein Virenscanner. Das Protokoll liegt unter " + Installer.LogPath + ".";
+                    var message = LocaleCatalog.T("installer.admin_blocked", "error", ex.Message, "log", Installer.LogPath);
                     Report(message);
                     Tell(message, MessageBoxIcon.Error);
                     SetBusy(false);
                     statusBox.Focus();
                     return;
                 }
-                var answer = MessageBox.Show(this, "Für diesen Ordner braucht das Setup Administratorrechte. Mit Administratorrechten neu starten?",
+                var answer = MessageBox.Show(this, LocaleCatalog.T("installer.admin_prompt"),
                     Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (answer == DialogResult.Yes && RestartElevated(mode, game))
                 {
@@ -945,8 +1273,8 @@ namespace FFRSSetup
             catch (Exception ex)
             {
                 running = false;
-                Report("Fehler: " + ex);
-                Tell("Das hat nicht geklappt: " + ex.Message + " Das Protokoll liegt unter " + Installer.LogPath + ".", MessageBoxIcon.Error);
+                Report(LocaleCatalog.T("installer.error", "error", ex));
+                Tell(LocaleCatalog.T("installer.failed", "error", ex.Message, "log", Installer.LogPath), MessageBoxIcon.Error);
             }
             finally
             {
@@ -961,14 +1289,15 @@ namespace FFRSSetup
             try
             {
                 // Ein Backslash am Ende wuerde das schliessende Anfuehrungszeichen maskieren.
-                var arguments = $"{mode} \"{game.TrimEnd('\\')}\"" + (removeUe4ssBox.Checked ? " --ue4ss" : "");
-                Report("Starte mit Administratorrechten neu: " + arguments);
+                var arguments = $"{mode} \"{game.TrimEnd('\\')}\"" + (removeUe4ssBox.Checked ? " --ue4ss" : "")
+                    + $" --language \"{LocaleCatalog.CurrentCode}\"";
+                Report(LocaleCatalog.T("installer.elevating", "arguments", arguments));
                 Process.Start(new ProcessStartInfo(Application.ExecutablePath, arguments) { Verb = "runas", UseShellExecute = true });
                 return true;
             }
             catch (Exception ex)
             {
-                Report("Neustart mit Administratorrechten abgebrochen: " + ex.Message);
+                Report(LocaleCatalog.T("installer.elevation_cancelled", "error", ex.Message));
                 return false;
             }
         }
@@ -980,23 +1309,25 @@ namespace FFRSSetup
                 var target = Path.Combine(Path.GetTempPath(), "FFRSAccess-Liesmich.txt");
                 using (var zip = Installer.OpenPayload())
                 {
-                    var entry = zip.Entries.FirstOrDefault(e => e.FullName.Replace('\\', '/') == "Liesmich.txt");
+                    var localizedReadme = "Liesmich." + LocaleCatalog.CurrentCode + ".txt";
+                    var entry = zip.Entries.FirstOrDefault(e => e.FullName.Replace('\\', '/') == localizedReadme)
+                        ?? zip.Entries.FirstOrDefault(e => e.FullName.Replace('\\', '/') == "Liesmich.txt");
                     if (entry == null)
-                        throw new FileNotFoundException("Liesmich.txt fehlt im Paket.");
+                        throw new FileNotFoundException(LocaleCatalog.T("installer.readme_missing"));
                     entry.ExtractToFile(target, true);
                 }
                 Process.Start(new ProcessStartInfo("notepad.exe", "\"" + target + "\"") { UseShellExecute = true });
             }
             catch (Exception ex)
             {
-                Tell("Liesmich konnte nicht geöffnet werden: " + ex.Message, MessageBoxIcon.Error);
+                Tell(LocaleCatalog.T("installer.readme_failed", "error", ex.Message), MessageBoxIcon.Error);
             }
         }
 
         private void SetBusy(bool busy)
         {
             UseWaitCursor = busy;
-            installButton.Enabled = uninstallButton.Enabled = browseButton.Enabled = readmeButton.Enabled = !busy;
+            languageBox.Enabled = installButton.Enabled = uninstallButton.Enabled = browseButton.Enabled = readmeButton.Enabled = !busy;
             Application.DoEvents();
         }
 

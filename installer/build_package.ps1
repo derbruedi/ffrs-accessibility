@@ -9,6 +9,7 @@ $root = Split-Path $PSScriptRoot -Parent
 $version = (Get-Content (Join-Path $root 'VERSION') -TotalCount 1).Trim()
 $numericVersion = [regex]::Match($version, '^\d+(\.\d+)*').Value
 if (-not $numericVersion) { throw "VERSION ungueltig: $version" }
+& (Join-Path $root 'tools\check_locales.ps1')
 $dist = Join-Path $root 'dist\FFRSAccess'
 $zip = Join-Path $root 'dist\FFRSAccess.zip'
 $sourceWin64 = Join-Path $GameDir 'FFRS\Binaries\Win64'
@@ -40,7 +41,8 @@ Set-Content -Path (Join-Path $ue4ss 'UE4SS-settings.ini') -Value $settings -Enco
 
 # Mod: nur mitgelieferte Daten, keine beim Spielen gelernten oder gescannten Dateien.
 $scripts = Join-Path $root 'mod\FFRSAccess\Scripts'
-Copy-Item (Join-Path $scripts 'main.lua'), (Join-Path $scripts 'narration.lua'), (Join-Path $scripts 'sounds.lua'),(Join-Path $scripts 'namen_spiel.txt'), (Join-Path $scripts 'namen_gelernt.txt') (Join-Path $mod 'Scripts')
+Copy-Item (Join-Path $scripts 'main.lua'), (Join-Path $scripts 'i18n.lua'), (Join-Path $scripts 'narration.lua'), (Join-Path $scripts 'sounds.lua'),(Join-Path $scripts 'namen_spiel.txt'), (Join-Path $scripts 'namen_gelernt.txt') (Join-Path $mod 'Scripts')
+Copy-Item (Join-Path $scripts 'locales') (Join-Path $mod 'Scripts') -Recurse
 Copy-Item (Join-Path $scripts 'karte_*.txt') (Join-Path $mod 'Scripts')
 Copy-Item (Join-Path $root 'build\ffrs_speech.dll'), (Join-Path $root 'build\prism.dll') (Join-Path $mod 'bin')
 New-Item -ItemType Directory -Force (Join-Path $mod 'Sounds') | Out-Null
@@ -49,7 +51,7 @@ Set-Content -Path (Join-Path $mod 'version.txt') -Value $version -Encoding Ascii
 
 # Installer; PowerShell 5.1 liest Skripte ohne BOM als ANSI, die Umlaute brauchen UTF-8 mit BOM.
 $utf8Bom = New-Object System.Text.UTF8Encoding $true
-foreach ($name in 'install.ps1', 'Liesmich.txt') {
+foreach ($name in @('install.ps1', 'locale.ps1') + @(Get-ChildItem $PSScriptRoot -Filter 'Liesmich*.txt' -File | Select-Object -ExpandProperty Name)) {
     $text = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot $name), [System.Text.Encoding]::UTF8)
     [System.IO.File]::WriteAllText((Join-Path $dist $name), $text, $utf8Bom)
 }
@@ -69,7 +71,7 @@ $payloadZip = Join-Path $root 'dist\payload.zip'
 foreach ($old in $staging, $payloadZip) { if (Test-Path $old) { Remove-Item $old -Recurse -Force } }
 New-Item -ItemType Directory -Force $staging | Out-Null
 Copy-Item (Join-Path $dist 'dateien'), (Join-Path $dist 'Lizenzen') $staging -Recurse
-Copy-Item (Join-Path $dist 'Liesmich.txt') $staging
+Copy-Item (Get-ChildItem $dist -Filter 'Liesmich*.txt' -File).FullName $staging -Force
 [System.IO.Compression.ZipFile]::CreateFromDirectory($staging, $payloadZip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 Remove-Item $staging -Recurse -Force
 $project = Join-Path $PSScriptRoot 'gui\FFRSSetup.csproj'

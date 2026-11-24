@@ -1,5 +1,7 @@
 # FINAL FANTASY RESONANCE Zugang
 
+[Deutsch](README.md) | [简体中文](README.zh-CN.md)
+
 Eine Barrierefreiheits-Mod, die FINAL FANTASY RESONANCE für blinde Spieler über einen Screenreader spielbar macht (NVDA, JAWS und andere über die Bibliothek Prism). Sie liest Menüs, Dialoge, Gespräche, Kämpfe und Ergebnisse vor und hat einen Pathfinder, der die Figur zu Personen, Schätzen, Ausgängen und Questzielen läuft.
 
 Die Mod läuft mit [RE-UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) im Spiel mit. Sie verändert keine Spieldateien und umgeht keinen Kopierschutz.
@@ -9,10 +11,10 @@ Die Mod läuft mit [RE-UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) im Spiel mit
 ## Installation
 
 1. Unter [Releases](https://github.com/derbruedi/ffrs-accessibility/releases) die neueste `FFRSAccess-Setup.exe` herunterladen.
-2. Das Spiel beenden und das Setup starten. Es findet das Spiel in den Steam-Bibliotheken, Enter installiert.
+2. Das Spiel beenden und das Setup starten. Es findet das Spiel in den Steam-Bibliotheken. Im Feld Sprache die gewünschte Sprache wählen, Enter installiert.
 3. Beim Start prüft das Setup, ob es auf GitHub eine neuere Version gibt, und bietet an, sie herunterzuladen und gleich zu installieren.
 
-Tasten und Hinweise stehen in [installer/Liesmich.txt](installer/Liesmich.txt).
+Tasten und Hinweise stehen in [installer/Liesmich.txt](installer/Liesmich.txt), auf Chinesisch in [installer/Liesmich.zh-CN.txt](installer/Liesmich.zh-CN.txt). Neue Sprachen können anhand von [docs/LOCALIZATION.md](docs/LOCALIZATION.md) ergänzt werden.
 
 ## Aufbau
 

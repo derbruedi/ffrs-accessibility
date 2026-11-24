@@ -19,6 +19,7 @@ Installation
    Feld Spielordner, darin der gefundene Ordner. Man kann einen anderen
    Ordner eintippen oder mit Alt+D durchsuchen, zum Beispiel
    D:\SteamLibrary\steamapps\common\FINAL FANTASY RESONANCE
+   Darüber im Feld Sprache die Sprache für Setup und Mod wählen.
 4. Enter oder Alt+I installiert. Eine Meldung sagt, wann es fertig ist.
    Alle Meldungen stehen außerdem im Feld Meldungen (Alt+M).
 5. Das Spiel starten. Die Mod meldet sich mit
@@ -42,11 +43,11 @@ Administratorrechten und startet sich dafür neu.
 
 Statt der Exe geht auch Installieren.bat aus dem Zip-Paket, auf Wunsch
 ohne Nachfrage:
-   Installieren.bat -GameDir "D:\Pfad\zum\Spielordner"
+   Installieren.bat -GameDir "D:\Pfad\zum\Spielordner" -Language zh-CN
 
 Ist UE4SS schon installiert, bleiben dessen Einstellungen und die Mod-Liste
-erhalten. Bei einem Update der Mod bleiben gelernte Namen und gescannte
-Wegekarten erhalten.
+erhalten. Bei einem Update der Mod bleiben gelernte Namen, gescannte
+Wegekarten und die gewählte Sprache erhalten.
 
 Deinstallation: im Setup Alt+E. Soll UE4SS ebenfalls weg, vorher das
 Kontrollkästchen "auch UE4SS entfernen" (Alt+U) ankreuzen. Im Zip-Paket
